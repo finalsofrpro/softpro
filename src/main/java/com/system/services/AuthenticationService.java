@@ -8,28 +8,25 @@ import java.util.*;
 /**
  * Service class responsible for user authentication and account management.
  * This class acts as the 'Subject' in the Observer pattern.
- *  @author Raghad  and Farah
+ * @author Raghd and Farah
  * @version 1.0
  */
 public class AuthenticationService {
-    private Map<String, String> userAccounts = new HashMap<>(); // يحمل: Username -> Password
-    private Map<String, String> userEmails = new HashMap<>();   // يحمل: Username -> Email
+    private Map<String, String> userAccounts = new HashMap<>(); // Username -> Password
+    private Map<String, String> userEmails = new HashMap<>();   // Username -> Email
     private Map<String, String> adminAccounts = new HashMap<>();
 
-    // قائمة المراقبين (Observer Pattern) - US 3.1
+    // قائمة المراقبين (Observer Pattern)
     private List<NotificationObserver> observers = new ArrayList<>();
 
     private final String USER_FILE = "users.txt";
     private final String ADMIN_FILE = "admins.txt";
 
-    /**
-     * Constructor initializes the service, loads data, and registers default observers.
-     */
     public AuthenticationService() {
         loadAccounts(USER_FILE, userAccounts);
         loadAccounts(ADMIN_FILE, adminAccounts);
 
-        // إضافة الـ EmailService كمراقب تلقائياً عند تشغيل الخدمة
+        // إضافة الـ EmailService كمراقب تلقائياً
         addObserver(new EmailService());
 
         if (adminAccounts.isEmpty()) {
@@ -38,56 +35,34 @@ public class AuthenticationService {
         }
     }
 
-    /**
-     * Adds a new observer to the notification list.
-     * @param observer The observer to be added.
-     */
     public void addObserver(NotificationObserver observer) {
-        if (observer != null) {
-            observers.add(observer);
-        }
+        if (observer != null) observers.add(observer);
     }
 
-    /**
-     * Notifies all registered observers.
-     * @param email The recipient email.
-     * @param message The message content.
-     */
     private void notifyObservers(String email, String message) {
         for (NotificationObserver observer : observers) {
             observer.update(email, message);
         }
     }
 
-    // فحص صيغة اليوزرنيم
     private boolean isValidUsername(String username) {
         return username != null && username.matches("^[a-zA-Z0-9._]+$");
     }
 
     /**
-     * Registers a new user.
-     * @param username The unique username.
-     * @param password The account password.
-     * @param email The user email.
-     * @return true if registration is successful.
+     * تسجيل مستخدم جديد
      */
     public boolean registerNewUser(String username, String password, String email) {
-        // 1. فحص الصيغة
         if (!isValidUsername(username)) return false;
 
-        // 2. فحص التكرار (Ignore Case)
         for (String existingUser : userAccounts.keySet()) {
             if (existingUser.equalsIgnoreCase(username)) return false;
         }
 
-        // 3. تخزين البيانات في الـ Maps
         userAccounts.put(username, password);
         userEmails.put(username, email);
-
-        // 4. حفظ في الملف
         saveAccount(USER_FILE, username, password + "," + email);
 
-        // 5. إرسال إشعار عبر الـ Observers في Thread منفصل
         String welcomeMessage = "Hello " + username + ",\n\nYour account has been created successfully!";
         new Thread(() -> notifyObservers(email, welcomeMessage)).start();
 
@@ -95,20 +70,26 @@ public class AuthenticationService {
     }
 
     /**
-     * Authenticates a user or admin.
-     * @param username Username input.
-     * @param password Password input.
-     * @return The user Role.
+     * تسجيل أدمن جديد (الميثود التي كانت تسبب الإيرور)
      */
+    public boolean registerNewAdmin(String username, String password) {
+        if (!isValidUsername(username)) return false;
+
+        for (String existingAdmin : adminAccounts.keySet()) {
+            if (existingAdmin.equalsIgnoreCase(username)) return false;
+        }
+
+        adminAccounts.put(username, password);
+        saveAccount(ADMIN_FILE, username, password);
+        return true;
+    }
+
     public Role login(String username, String password) {
-        // فحص الأدمن
         for (Map.Entry<String, String> entry : adminAccounts.entrySet()) {
             if (entry.getKey().equalsIgnoreCase(username) && entry.getValue().equals(password)) {
                 return Role.ADMIN;
             }
         }
-
-        // فحص اليوزر
         for (Map.Entry<String, String> entry : userAccounts.entrySet()) {
             if (entry.getKey().equalsIgnoreCase(username) && entry.getValue().equals(password)) {
                 return Role.USER;

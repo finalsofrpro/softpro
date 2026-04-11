@@ -1,45 +1,38 @@
 package org.example;
 
-
 import com.system.gui.ModernLoginFrame;
 import com.system.models.Appointment;
 import com.system.repository.AppointmentRepository;
 import com.system.services.AuthenticationService;
 import com.system.services.BookingService;
-import com.system.strategies.RangeDurationStrategy;
+import com.system.strategies.UrgentStrategy; // استيراد الاستراتيجية المحدثة
 
 import javax.swing.SwingUtilities;
 import javax.swing.UIManager;
 import java.time.LocalDateTime;
 
-// كلاس التشغيل الرئيسي المحدث ليعمل بواجهة رسومية (GUI)
-
 public class Main {
-    // جعل الخدمات static لتمكين الوصول إليها من الشاشات المختلفة إذا لزم الأمر
+    // 1. تهيئة المستودع والخدمات (Static لسهولة الوصول إليها من كل الشاشات)
     public static AppointmentRepository repo = new AppointmentRepository();
     public static AuthenticationService authService = new AuthenticationService();
-    public static BookingService bookingService = new BookingService(repo, new RangeDurationStrategy());
+
+    // 2. تحديث الـ Strategy هنا: نبدأ بـ UrgentStrategy أو أي استراتيجية افتراضية
+    public static BookingService bookingService = new BookingService(repo, new UrgentStrategy());
 
     public static void main(String[] args) {
-        // 1. تهيئة بعض المواعيد الابتدائية (اختياري، لأن الملف سيحمل المواعيد القديمة)
-        if (repo.getAvailableAppointments().isEmpty()) {
-            repo.addAppointment(new Appointment(1, LocalDateTime.now().plusDays(1).withHour(10).withMinute(0), 30));
-        }
+        // 3. تحميل البيانات من الملف فور بدء البرنامج
+        repo.loadFromFile();
 
-        // 2. تحسين شكل الواجهة لتناسب نظام التشغيل
+        // 4. تحسين شكل الواجهة
         try {
             UIManager.setLookAndFeel(UIManager.getSystemLookAndFeelClassName());
         } catch (Exception e) {
             e.printStackTrace();
         }
 
-        // 3. تشغيل شاشة الدخول الفيروزية (GUI)
+        // 5. تشغيل واجهة الدخول
         SwingUtilities.invokeLater(() -> {
             new ModernLoginFrame().setVisible(true);
         });
-
-        /* ملاحظة: الكود القديم (Scanner) تم إيقافه ليعمل النظام بالواجهات الرسومية.
-           كل الوظائف (إضافة موعد، حجز، إلخ) سنقوم بنقلها لأزرار داخل الـ Dashboards.
-        */
     }
 }

@@ -3,9 +3,8 @@ package com.system.strategies;
 import com.system.models.Appointment;
 
 /**
- * هذا هو القالب لأي قانون حجز مستقبلي.
+ * Interface for the Strategy Pattern to validate appointment bookings.
  */
 public interface BookingStrategy {
-    // ميثود بترجع true إذا الموعد مسموح، و false إذا مرفوض
     boolean isValid(Appointment appointment);
 }

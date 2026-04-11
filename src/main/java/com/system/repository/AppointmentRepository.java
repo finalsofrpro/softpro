@@ -59,48 +59,53 @@ public class AppointmentRepository {
 
 
     public void saveToFile() {
-        // نستخدم PrintWriter بدون true لمسح الملف وكتابة القائمة المحدثة (Overwriting)
-        // هذا يضمن عدم تكرار المواعيد عند كل عملية حفظ
-        try (PrintWriter out = new PrintWriter(new FileWriter(FILE_NAME))) {
+        try (PrintWriter out = new PrintWriter(new FileWriter("appointments.txt"))) {
             for (Appointment app : appointments) {
-                // التأكد من وجود قيمة للـ BookedBy لتجنب الـ Null
-                String bookedBy = (app.getBookedBy() == null || app.getBookedBy().isEmpty()) ? "NONE" : app.getBookedBy();
-
-                out.println(app.getId() + "," +
-                        app.getDateTime().format(formatter) + "," +
-                        app.getDurationMinutes() + "," +
-                        app.getStatus() + "," +
-                        bookedBy);
+                // الترتيب: ID, DateTime, Duration, Status, MaxParticipants, Type, BookedBy
+                out.println(app.getId() + "|" +
+                        app.getDateTime() + "|" +
+                        app.getDurationMinutes() + "|" +
+                        app.getStatus() + "|" +
+                        app.getMaxParticipants() + "|" +
+                        app.getType() + "|" +
+                        app.getBookedBy());
             }
         } catch (IOException e) {
-            System.err.println("Error saving appointments: " + e.getMessage());
+            e.printStackTrace();
         }
     }
 
-    private void loadFromFile() {
-        File file = new File(FILE_NAME);
+    public void loadFromFile() {
+        appointments.clear();
+        File file = new File("appointments.txt");
         if (!file.exists()) return;
 
-        // تنظيف القائمة قبل التحميل لمنع التكرار في الذاكرة
-        appointments.clear();
-
-        try (BufferedReader reader = new BufferedReader(new FileReader(file))) {
+        try (BufferedReader br = new BufferedReader(new FileReader(file))) {
             String line;
-            while ((line = reader.readLine()) != null) {
-                String[] parts = line.split(",");
-                if (parts.length == 5) {
-                    Appointment app = new Appointment(
-                            Integer.parseInt(parts[0]),
-                            LocalDateTime.parse(parts[1], formatter),
-                            Integer.parseInt(parts[2])
-                    );
-                    app.setStatus(parts[3]);
-                    app.setBookedBy(parts[4].equals("NONE") ? "" : parts[4]);
+            while ((line = br.readLine()) != null) {
+                if (line.trim().isEmpty()) continue;
+
+                // بنقسم السطر باستخدام الـ Pipe |
+                String[] p = line.split("\\|");
+
+                if (p.length >= 6) {
+                    int id = Integer.parseInt(p[0]);
+                    // LocalDateTime.parse بدون فورمارتر بتعرف تقرأ التاريخ اللي فيه حرف T تلقائياً
+                    LocalDateTime dt = LocalDateTime.parse(p[1]);
+                    int dur = Integer.parseInt(p[2]);
+                    String status = p[3];
+                    int max = Integer.parseInt(p[4]);
+                    String type = p[5];
+                    String bookedBy = (p.length > 6) ? p[6] : "";
+
+                    Appointment app = new Appointment(id, dt, dur, max, type);
+                    app.setStatus(status);
+                    app.setBookedBy(bookedBy);
                     appointments.add(app);
                 }
             }
-        } catch (IOException | RuntimeException e) {
-            System.err.println("Error loading appointments: " + e.getMessage());
+        } catch (Exception e) {
+            System.out.println("Error loading: " + e.getMessage());
         }
     }
 }

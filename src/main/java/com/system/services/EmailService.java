@@ -8,24 +8,24 @@ import java.util.Properties;
 /**
  * Service responsible for sending email notifications.
  * Implements NotificationObserver for pattern compliance.
- * @author Raghd and Farah
  */
 public class EmailService implements NotificationObserver {
 
     private static final String MY_EMAIL = "raghdmansour91@gmail.com";
+    // ملاحظة: تأكدي أن هذه هي كلمة مرور التطبيق (App Password) وليس كلمة مرور الإيميل العادية
     private static final String APP_PASSWORD = "ebnoqizmsthoewjq";
 
     /**
      * Implementation of the Observer update method.
-     * @param recipient The recipient's email address.
-     * @param message The content to send.
+     * Uses a Thread to ensure the application remains responsive during email sending.
      */
     @Override
     public void update(String recipient, String message) {
-        sendWelcomeEmail(recipient, message);
+        // تشغيل عملية الإرسال في Thread منفصل لعدم تجميد واجهة المستخدم (GUI)
+        new Thread(() -> sendEmail(recipient, message)).start();
     }
 
-    public void sendWelcomeEmail(String recipientEmail, String content) {
+    public void sendEmail(String recipientEmail, String content) {
         Properties props = new Properties();
         props.put("mail.smtp.auth", "true");
         props.put("mail.smtp.starttls.enable", "true");
@@ -41,19 +41,17 @@ public class EmailService implements NotificationObserver {
             }
         });
 
-        session.setDebug(true);
-
         try {
             Message message = new MimeMessage(session);
             message.setFrom(new InternetAddress(MY_EMAIL));
             message.setRecipients(Message.RecipientType.TO, InternetAddress.parse(recipientEmail));
-            message.setSubject("System Notification");
+            message.setSubject("System Notification - Appointment Update");
             message.setText(content);
 
             Transport.send(message);
-            System.out.println("✅ DONE! Email sent to: " + recipientEmail);
+            System.out.println("✅ DONE! Email successfully sent to: " + recipientEmail);
         } catch (MessagingException e) {
-            System.err.println("❌ Error: " + e.getMessage());
+            System.err.println("❌ Error: Failed to send email to " + recipientEmail);
             e.printStackTrace();
         }
     }

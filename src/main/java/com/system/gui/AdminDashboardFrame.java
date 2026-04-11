@@ -25,7 +25,6 @@ public class AdminDashboardFrame extends JFrame {
         setLocationRelativeTo(null);
         setLayout(new BorderLayout());
 
-        // الجانب الأيسر
         JPanel sidePanel = new JPanel(new GridLayout(8, 1, 10, 10));
         sidePanel.setBackground(TURQUOISE_COLOR);
         sidePanel.setPreferredSize(new Dimension(230, 750));
@@ -63,7 +62,6 @@ public class AdminDashboardFrame extends JFrame {
         showWelcome(adminName);
     }
 
-    // ميثود لتنسيق الأزرار (الخط الكتكوت/الوسط)
     private void applyStyledButton(JButton btn, int fontSize, int borderWeight) {
         btn.setBackground(Color.WHITE);
         btn.setForeground(TURQUOISE_COLOR);
@@ -75,8 +73,6 @@ public class AdminDashboardFrame extends JFrame {
 
     private void showManageAppointments() {
         contentPanel.removeAll();
-
-        // أزرار المود (Add, Edit, Delete) بخط كتكوت (14)
         JPanel togglePanel = new JPanel(new GridLayout(1, 3, 20, 0));
         togglePanel.setBackground(Color.WHITE);
         togglePanel.setBorder(BorderFactory.createEmptyBorder(20, 150, 20, 150));
@@ -96,135 +92,92 @@ public class AdminDashboardFrame extends JFrame {
         togglePanel.add(addMode); togglePanel.add(editMode); togglePanel.add(deleteMode);
         contentPanel.add(togglePanel, BorderLayout.NORTH);
 
-        JPanel workArea = new JPanel(new GridLayout(8, 1, 10, 10));
+        JPanel workArea = new JPanel(new GridLayout(10, 1, 5, 5));
         workArea.setBackground(Color.WHITE);
-        workArea.setBorder(BorderFactory.createEmptyBorder(20, 150, 50, 150));
+        workArea.setBorder(BorderFactory.createEmptyBorder(10, 150, 30, 150));
 
         JTextField idF = new JTextField();
         JTextField dateF = new JTextField("2026-04-15 10:00");
         JTextField durF = new JTextField("30");
+        JComboBox<String> typeBox = new JComboBox<>(new String[]{"General", "Urgent", "Virtual"});
 
         JButton actionBtn = new JButton("Confirm " + currentSubMode);
-        applyStyledButton(actionBtn, 20, 3); // خط أكبر للأكشن الأساسي
+        applyStyledButton(actionBtn, 20, 3);
 
         if (currentSubMode.equals("ADD")) {
             workArea.add(new JLabel("Enter New ID:")); workArea.add(idF);
             workArea.add(new JLabel("Time (yyyy-MM-dd HH:mm):")); workArea.add(dateF);
             workArea.add(new JLabel("Duration (Min):")); workArea.add(durF);
+            workArea.add(new JLabel("Type:")); workArea.add(typeBox);
         } else if (currentSubMode.equals("EDIT")) {
-            workArea.add(new JLabel("Target ID (Cannot be changed):")); workArea.add(idF);
+            workArea.add(new JLabel("Target ID:")); workArea.add(idF);
             workArea.add(new JLabel("New Time:")); workArea.add(dateF);
             workArea.add(new JLabel("New Duration:")); workArea.add(durF);
+            workArea.add(new JLabel("New Type:")); workArea.add(typeBox);
         } else {
             workArea.add(new JLabel("Enter ID to Delete:")); workArea.add(idF);
-            workArea.add(new JLabel("")); workArea.add(new JLabel("Warning: This ID will be removed from system."));
         }
 
+        workArea.add(new JLabel(""));
         workArea.add(actionBtn);
-        actionBtn.addActionListener(e -> handleAppAction(idF.getText(), dateF.getText(), durF.getText()));
+        actionBtn.addActionListener(e -> handleAppAction(idF.getText(), dateF.getText(), durF.getText(), typeBox.getSelectedItem().toString()));
 
         contentPanel.add(workArea, BorderLayout.CENTER);
         refresh();
     }
 
-    private void handleAppAction(String idS, String dateS, String durS) {
+    private void handleAppAction(String idS, String dateS, String durS, String typeS) {
         try {
             int id = Integer.parseInt(idS);
-            boolean exists = appointmentRepo.getAvailableAppointments().stream().anyMatch(a -> a.getId() == id);
+            Appointment target = appointmentRepo.getAvailableAppointments().stream()
+                    .filter(a -> a.getId() == id).findFirst().orElse(null);
 
             if (currentSubMode.equals("ADD")) {
                 LocalDateTime dt = LocalDateTime.parse(dateS, DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm"));
-                appointmentRepo.addAppointment(new Appointment(id, dt, Integer.parseInt(durS)));
-                JOptionPane.showMessageDialog(this, "Appointment Added Successfully!");
-            } else if (currentSubMode.equals("EDIT")) {
-                if (!exists) {
-                    JOptionPane.showMessageDialog(this, "Error: Appointment ID not found!", "Fail", JOptionPane.ERROR_MESSAGE);
-                    return;
-                }
-                // تعديل الموعد مع الحفاظ على نفس الـ ID
-                LocalDateTime dt = LocalDateTime.parse(dateS, DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm"));
-                appointmentRepo.deleteAppointment(id); // نحذف القديم
-                appointmentRepo.addAppointment(new Appointment(id, dt, Integer.parseInt(durS))); // نضيف الجديد بنفس الـ ID
-                JOptionPane.showMessageDialog(this, "Appointment Updated!");
-            } else if (currentSubMode.equals("DELETE")) {
-                if (!exists) {
-                    JOptionPane.showMessageDialog(this, "Error: Appointment ID not found!", "Fail", JOptionPane.ERROR_MESSAGE);
-                    return;
+                appointmentRepo.addAppointment(new Appointment(id, dt, Integer.parseInt(durS), 1, typeS));
+                JOptionPane.showMessageDialog(this, "Added!");
+            } else if (currentSubMode.equals("EDIT") || currentSubMode.equals("DELETE")) {
+                if (target == null) return;
+                if ("BOOKED".equals(target.getStatus())) {
+                    new com.system.services.EmailService().sendEmail(target.getBookedBy(), "Notice about your appointment " + currentSubMode);
                 }
                 appointmentRepo.deleteAppointment(id);
-                JOptionPane.showMessageDialog(this, "Appointment Deleted!");
+                if (currentSubMode.equals("EDIT")) {
+                    LocalDateTime dt = LocalDateTime.parse(dateS, DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm"));
+                    appointmentRepo.addAppointment(new Appointment(id, dt, Integer.parseInt(durS), 1, typeS));
+                }
+                JOptionPane.showMessageDialog(this, "Done!");
             }
         } catch (Exception ex) { JOptionPane.showMessageDialog(this, "Error: " + ex.getMessage()); }
+        refresh();
     }
 
     private void showManageUsers() {
         contentPanel.removeAll();
         JPanel userPanel = new JPanel(new BorderLayout());
-        userPanel.setBackground(Color.WHITE);
-
         String[] cols = {"User Name", "Account Type"};
         DefaultTableModel model = new DefaultTableModel(cols, 0);
-        ArrayList<String> allUsernames = new ArrayList<>();
-
         try (java.io.BufferedReader br = new java.io.BufferedReader(new java.io.FileReader("users.txt"))) {
             String line;
             while ((line = br.readLine()) != null) {
                 String[] p = line.split(",");
-                if (p.length >= 1) {
-                    model.addRow(new Object[]{p[0], "CLIENT"});
-                    allUsernames.add(p[0]);
-                }
+                if (p.length >= 1) model.addRow(new Object[]{p[0], "CLIENT"});
             }
         } catch (Exception e) { }
-
-        JTable table = new JTable(model);
-        table.setRowHeight(30);
-        userPanel.add(new JScrollPane(table), BorderLayout.CENTER);
-
-        JPanel deleteUserArea = new JPanel(new FlowLayout(FlowLayout.CENTER, 20, 20));
-        deleteUserArea.setBackground(Color.WHITE);
-
-        JLabel label = new JLabel("Enter Username to Delete:");
-        label.setFont(new Font("Segoe UI", Font.BOLD, 16)); // تكبير الجملة شوي
-
-        JTextField deleteUserField = new JTextField(15);
-        deleteUserField.setFont(new Font("Segoe UI", Font.PLAIN, 16));
-
-        JButton btnDeleteUser = new JButton("Delete User");
-        applyStyledButton(btnDeleteUser, 18, 2); // خط وسط كتكوت (18)
-
-        deleteUserArea.add(label);
-        deleteUserArea.add(deleteUserField);
-        deleteUserArea.add(btnDeleteUser);
-
-        btnDeleteUser.addActionListener(e -> {
-            String target = deleteUserField.getText().trim();
-            if(!allUsernames.contains(target)) {
-                JOptionPane.showMessageDialog(this, "User '" + target + "' not found in system!", "Error", JOptionPane.ERROR_MESSAGE);
-            } else {
-                deleteUserFromFile(target);
-                showManageUsers();
-                JOptionPane.showMessageDialog(this, "User deleted successfully!");
-            }
-        });
-
-        userPanel.add(deleteUserArea, BorderLayout.SOUTH);
+        userPanel.add(new JScrollPane(new JTable(model)), BorderLayout.CENTER);
         contentPanel.add(userPanel, BorderLayout.CENTER);
         refresh();
     }
 
-    // بقية الميثودات (deleteUserFromFile, showAllAppointments, etc.) تبقى كما هي مع تحديث Refresh
-    private void deleteUserFromFile(String username) {
-        java.util.List<String> lines = new ArrayList<>();
-        try (java.io.BufferedReader br = new java.io.BufferedReader(new java.io.FileReader("users.txt"))) {
-            String line;
-            while ((line = br.readLine()) != null) {
-                if (!line.startsWith(username + ",")) lines.add(line);
-            }
-        } catch (Exception e) { }
-        try (java.io.PrintWriter pw = new java.io.PrintWriter(new java.io.FileWriter("users.txt"))) {
-            for (String l : lines) pw.println(l);
-        } catch (Exception e) { }
+    private void showAllAppointments() {
+        contentPanel.removeAll();
+        String[] cols = {"ID", "Time", "Duration", "Type", "Status"};
+        DefaultTableModel model = new DefaultTableModel(cols, 0);
+        for (Appointment a : appointmentRepo.getAvailableAppointments()) {
+            model.addRow(new Object[]{a.getId(), a.getDateTime().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm")), a.getDurationMinutes(), a.getType(), a.getStatus()});
+        }
+        contentPanel.add(new JScrollPane(new JTable(model)), BorderLayout.CENTER);
+        refresh();
     }
 
     private void showWelcome(String name) {
@@ -232,18 +185,6 @@ public class AdminDashboardFrame extends JFrame {
         JLabel lbl = new JLabel("Welcome back, " + name, SwingConstants.CENTER);
         lbl.setFont(new Font("Segoe UI", Font.BOLD, 28));
         contentPanel.add(lbl, BorderLayout.CENTER);
-        refresh();
-    }
-
-    private void showAllAppointments() {
-        contentPanel.removeAll();
-        String[] cols = {"ID", "Time", "Duration", "Status"};
-        DefaultTableModel model = new DefaultTableModel(cols, 0);
-        for (Appointment a : appointmentRepo.getAvailableAppointments()) {
-            model.addRow(new Object[]{a.getId(), a.getDateTime().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm")), a.getDurationMinutes(), a.getStatus()});
-        }
-        JTable t = new JTable(model); t.setRowHeight(25);
-        contentPanel.add(new JScrollPane(t), BorderLayout.CENTER);
         refresh();
     }
 
@@ -258,10 +199,8 @@ public class AdminDashboardFrame extends JFrame {
     private JButton createMenuButton(String text) {
         JButton btn = new JButton(text);
         btn.setFont(new Font("Segoe UI", Font.BOLD, 14));
-        btn.setForeground(Color.WHITE);
-        btn.setBackground(TURQUOISE_COLOR);
-        btn.setFocusPainted(false);
-        btn.setBorderPainted(false);
+        btn.setForeground(Color.WHITE); btn.setBackground(TURQUOISE_COLOR);
+        btn.setFocusPainted(false); btn.setBorderPainted(false);
         return btn;
     }
 
