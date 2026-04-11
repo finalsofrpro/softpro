@@ -6,76 +6,65 @@ import java.util.HashMap;
 import java.util.Map;
 
 /**
- * @author Raghd Mansour
- * خدمة التحقق من الهوية - تدعم الرموز المسموحة وتجاهل حالة الأحرف
+ * @author Raghd Mansour & Farah
+ * خدمة التحقق من الهوية - النسخة النهائية (تخزين الإيميل + حماية الصيغة + Ignore Case)
  */
 public class AuthenticationService {
-    private Map<String, String> userAccounts = new HashMap<>();
+    private Map<String, String> userAccounts = new HashMap<>(); // يحمل: Username -> Password
+    private Map<String, String> userEmails = new HashMap<>();   // يحمل: Username -> Email
     private Map<String, String> adminAccounts = new HashMap<>();
 
     private final String USER_FILE = "users.txt";
     private final String ADMIN_FILE = "admins.txt";
 
     public AuthenticationService() {
-        // تحميل الحسابات من الملفات فور تشغيل النظام
-        loadAccounts(USER_FILE, userAccounts);
+        loadAccounts(USER_FILE, userAccounts); // يتم تحميل الإيميلات أيضاً داخل هذه الميثود
         loadAccounts(ADMIN_FILE, adminAccounts);
 
-        // إذا كان ملف الإدارة فارغاً، ننشئ الأدمن الافتراضي
         if (adminAccounts.isEmpty()) {
             adminAccounts.put("admin", "admin123");
             saveAccount(ADMIN_FILE, "admin", "admin123");
         }
     }
 
-    /**
-     * فحص صحة صيغة اسم المستخدم:
-     * يسمح فقط بالأحرف (A-Z, a-z)، الأرقام (0-9)، النقطة (.)، والشرطة السفلية (_)
-     */
+    // فحص صيغة اليوزرنيم (أحرف، أرقام، نقطة، شرطة سفلية فقط)
     private boolean isValidUsername(String username) {
         return username != null && username.matches("^[a-zA-Z0-9._]+$");
     }
 
     /**
-     * ميثود التسجيل العامة لليوزر
+     * تسجيل مستخدم جديد مع الإيميل
      */
-    public boolean register(String username, String password) {
-        return registerNewUser(username, password);
-    }
-
-    // تسجيل مستخدم جديد (فحص الصيغة + فحص التكرار بغض النظر عن الحالة)
-    public boolean registerNewUser(String username, String password) {
-        // 1. فحص الرموز المسموحة
-        if (!isValidUsername(username)) {
-            System.err.println("Invalid username format!");
-            return false;
-        }
+    public boolean registerNewUser(String username, String password, String email) {
+        // 1. فحص الصيغة
+        if (!isValidUsername(username)) return false;
 
         // 2. فحص التكرار (Ignore Case)
         for (String existingUser : userAccounts.keySet()) {
-            if (existingUser.equalsIgnoreCase(username)) {
-                return false;
-            }
+            if (existingUser.equalsIgnoreCase(username)) return false;
         }
 
+        // 3. تخزين البيانات في الـ Maps
         userAccounts.put(username, password);
-        saveAccount(USER_FILE, username, password);
+        userEmails.put(username, email);
+
+        // 4. حفظ في الملف (Username,Password,Email)
+        saveAccount(USER_FILE, username, password + "," + email);
+
+        // 5. إرسال إيميل ترحيبي في Thread منفصل (عشان البرنامج ما يعلق)
+        new Thread(() -> EmailService.sendWelcomeEmail(email, username)).start();
+
         return true;
     }
 
-    // تسجيل أدمن جديد (فحص الصيغة + فحص التكرار بغض النظر عن الحالة)
+    /**
+     * تسجيل أدمن جديد (الأدمن لا يحتاج إيميل حالياً حسب الطلب)
+     */
     public boolean registerNewAdmin(String username, String password) {
-        // 1. فحص الرموز المسموحة
-        if (!isValidUsername(username)) {
-            System.err.println("Invalid admin username format!");
-            return false;
-        }
+        if (!isValidUsername(username)) return false;
 
-        // 2. فحص التكرار (Ignore Case)
         for (String existingAdmin : adminAccounts.keySet()) {
-            if (existingAdmin.equalsIgnoreCase(username)) {
-                return false;
-            }
+            if (existingAdmin.equalsIgnoreCase(username)) return false;
         }
 
         adminAccounts.put(username, password);
@@ -83,41 +72,37 @@ public class AuthenticationService {
         return true;
     }
 
-    // فحص بيانات الدخول (اليوزرنيم غير حساس للحالة | الباسورد حساس للحالة)
+    /**
+     * فحص الدخول
+     */
     public Role login(String username, String password) {
-        // 1. فحص في قائمة الأدمن
+        // فحص الأدمن
         for (Map.Entry<String, String> entry : adminAccounts.entrySet()) {
-            if (entry.getKey().equalsIgnoreCase(username)) {
-                if (entry.getValue().equals(password)) {
-                    return Role.ADMIN;
-                }
+            if (entry.getKey().equalsIgnoreCase(username) && entry.getValue().equals(password)) {
+                return Role.ADMIN;
             }
         }
 
-        // 2. فحص في قائمة اليوزرز
+        // فحص اليوزر
         for (Map.Entry<String, String> entry : userAccounts.entrySet()) {
-            if (entry.getKey().equalsIgnoreCase(username)) {
-                if (entry.getValue().equals(password)) {
-                    return Role.USER;
-                }
+            if (entry.getKey().equalsIgnoreCase(username) && entry.getValue().equals(password)) {
+                return Role.USER;
             }
         }
 
         return Role.NONE;
     }
 
-    public void logout() {
-        System.out.println("[System]: Logged out successfully.");
-    }
-
-    private void saveAccount(String filePath, String user, String pass) {
+    // ميثود مساعدة للحفظ في الملف
+    private void saveAccount(String filePath, String user, String data) {
         try (PrintWriter out = new PrintWriter(new FileWriter(filePath, true))) {
-            out.println(user + "," + pass);
+            out.println(user + "," + data);
         } catch (IOException e) {
-            System.err.println("Error saving account: " + e.getMessage());
+            System.err.println("Error saving: " + e.getMessage());
         }
     }
 
+    // ميثود مساعدة لتحميل البيانات من الملفات
     private void loadAccounts(String filePath, Map<String, String> map) {
         File file = new File(filePath);
         if (!file.exists()) return;
@@ -126,12 +111,21 @@ public class AuthenticationService {
             String line;
             while ((line = br.readLine()) != null) {
                 String[] parts = line.split(",");
-                if (parts.length == 2) {
-                    map.put(parts[0], parts[1]);
+                if (parts.length >= 2) {
+                    map.put(parts[0], parts[1]); // parts[0]=User, parts[1]=Pass
+
+                    // إذا كان الملف هو ملف اليوزرز وفيه إيميل (الخانة الثالثة)
+                    if (filePath.equals(USER_FILE) && parts.length == 3) {
+                        userEmails.put(parts[0], parts[2]); // parts[2]=Email
+                    }
                 }
             }
         } catch (IOException e) {
-            System.err.println("Error loading file: " + filePath);
+            System.err.println("Error loading: " + filePath);
         }
+    }
+
+    public void logout() {
+        System.out.println("[System]: Logged out.");
     }
 }

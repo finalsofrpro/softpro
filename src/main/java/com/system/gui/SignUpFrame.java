@@ -1,137 +1,115 @@
 package com.system.gui;
 
 import com.system.services.AuthenticationService;
-import org.example.Main; // تأكدي إن البكج مطابق للمين عندك
+import org.example.Main;
 import javax.swing.*;
 import java.awt.*;
-import java.awt.event.*;
-
-
- //Modern Turquoise Sign Up Interface
 
 public class SignUpFrame extends JFrame {
-
-    private AuthenticationService authService = Main.authService;
     private final Color TURQUOISE_COLOR = new Color(0, 188, 212);
-    private final Color TEXT_DARK_RED = new Color(128, 0, 0);
+    private AuthenticationService authService = Main.authService;
 
     public SignUpFrame() {
-        // إعدادات النافذة
-        setTitle("Create Account");
-        setSize(400, 650);
-        setDefaultCloseOperation(EXIT_ON_CLOSE);
+        setTitle("Create New Account");
+        setSize(450, 650); // زدنا الطول شوي عشان وسع حقل الإيميل
+        setDefaultCloseOperation(DISPOSE_ON_CLOSE);
         setLocationRelativeTo(null);
         getContentPane().setBackground(Color.WHITE);
         setLayout(null);
 
-        // --- Header Section ---
-        JLabel titleLabel = new JLabel("Sign up");
-        titleLabel.setFont(new Font("Segoe UI", Font.BOLD, 36));
-        titleLabel.setBounds(40, 40, 200, 50);
-        add(titleLabel);
+        // --- Header ---
+        JLabel title = new JLabel("Sign Up");
+        title.setFont(new Font("Segoe UI", Font.BOLD, 32));
+        title.setBounds(40, 30, 200, 40);
+        add(title);
 
-        JLabel subtitleLabel = new JLabel("Join us to manage your appointments.");
-        subtitleLabel.setFont(new Font("Segoe UI", Font.PLAIN, 14));
-        subtitleLabel.setForeground(Color.GRAY);
-        subtitleLabel.setBounds(40, 90, 320, 20);
-        add(subtitleLabel);
+        // --- Username ---
+        JLabel userLbl = new JLabel("USERNAME");
+        styleLabel(userLbl, 100);
+        add(userLbl);
 
-        // --- Full Name Field ---
-        createLabel("FULL NAME", 150);
-        JTextField nameField = createStyledField("e.g. Raghd Mansour", 180);
-        add(nameField);
-
-        // --- Username Field ---
-        createLabel("USERNAME", 240);
-        JTextField userField = createStyledField("e.g. raghd_23", 270);
+        JTextField userField = new JTextField();
+        userField.setBounds(40, 125, 350, 35);
         add(userField);
 
-        // --- Password Field ---
-        createLabel("PASSWORD", 330);
+        // --- Password ---
+        JLabel passLbl = new JLabel("PASSWORD");
+        styleLabel(passLbl, 180);
+        add(passLbl);
+
         JPasswordField passField = new JPasswordField();
-        passField.setBounds(40, 360, 320, 35);
-        passField.setBorder(BorderFactory.createMatteBorder(0, 0, 1, 0, Color.LIGHT_GRAY));
+        passField.setBounds(40, 205, 350, 35);
         add(passField);
 
-        // --- Confirm Password Field ---
-        createLabel("CONFIRM PASSWORD", 420);
-        JPasswordField confirmField = new JPasswordField();
-        confirmField.setBounds(40, 450, 320, 35);
-        confirmField.setBorder(BorderFactory.createMatteBorder(0, 0, 1, 0, Color.LIGHT_GRAY));
-        add(confirmField);
+        // --- Email (الحقل الجديد) ---
+        JLabel emailLbl = new JLabel("EMAIL ADDRESS");
+        styleLabel(emailLbl, 260);
+        add(emailLbl);
 
-        // --- Register Button ---
-        JButton registerBtn = new JButton("Register Now");
-        registerBtn.setBackground(TURQUOISE_COLOR);
-        registerBtn.setForeground(Color.WHITE);
-        registerBtn.setFont(new Font("Segoe UI", Font.BOLD, 16));
-        registerBtn.setBounds(40, 520, 320, 50);
-        registerBtn.setFocusPainted(false);
-        registerBtn.setBorderPainted(false);
-        registerBtn.setCursor(new Cursor(Cursor.HAND_CURSOR));
-
-        registerBtn.addActionListener(e -> {
-            String username = userField.getText();
-            String password = new String(passField.getPassword());
-            String confirm = new String(confirmField.getPassword());
-
-            if (username.isEmpty() || password.isEmpty() || !password.equals(confirm)) {
-                JOptionPane.showMessageDialog(this, "Please check your inputs!");
-                return;
-            }
-
-            // محاولة التسجيل وفحص النتيجة
-            boolean success = authService.register(username, password);
-
-            if (success) {
-                JOptionPane.showMessageDialog(this, "Account created successfully!");
-                new ModernLoginFrame().setVisible(true);
-                dispose();
-            } else {
-                JOptionPane.showMessageDialog(this, "Username '" + username + "' is already taken. Try another one.", "Registration Error", JOptionPane.ERROR_MESSAGE);
-            }
-        });
-        add(registerBtn);
-
-        // --- Back to Login Link ---
-        JLabel loginLink = new JLabel("<html>Already have an account? <u><font color='#00BCD4'>Login</font></u></html>");
-        loginLink.setBounds(100, 580, 250, 20);
-        loginLink.setFont(new Font("Segoe UI", Font.PLAIN, 14));
-        loginLink.setCursor(new Cursor(Cursor.HAND_CURSOR));
-        loginLink.addMouseListener(new MouseAdapter() {
-            public void mouseClicked(MouseEvent e) {
-                new ModernLoginFrame().setVisible(true);
-                dispose();
-            }
-        });
-        add(loginLink);
-    }
-
-    // ميثود مساعدة لإنشاء العناوين الحمراء
-    private void createLabel(String text, int y) {
-        JLabel label = new JLabel(text);
-        label.setFont(new Font("Segoe UI", Font.BOLD, 13));
-        label.setForeground(TEXT_DARK_RED);
-        label.setBounds(40, y, 200, 20);
-        add(label);
-    }
-
-    // ميثود مساعدة لإنشاء حقول الإدخال مع Placeholder
-    private JTextField createStyledField(String placeholder, int y) {
-        JTextField field = new JTextField(placeholder);
-        field.setFont(new Font("Segoe UI", Font.PLAIN, 16));
-        field.setForeground(Color.LIGHT_GRAY);
-        field.setBounds(40, y, 320, 35);
-        field.setBorder(BorderFactory.createMatteBorder(0, 0, 1, 0, Color.LIGHT_GRAY));
-
-        field.addFocusListener(new FocusAdapter() {
-            public void focusGained(FocusEvent e) {
-                if (field.getText().equals(placeholder)) {
-                    field.setText("");
-                    field.setForeground(Color.BLACK);
+        JTextField emailField = new JTextField("example@mail.com");
+        emailField.setForeground(Color.LIGHT_GRAY);
+        emailField.setBounds(40, 285, 350, 35);
+        // حركة لطيفة لتفريغ النص عند الضغط
+        emailField.addFocusListener(new java.awt.event.FocusAdapter() {
+            public void focusGained(java.awt.event.FocusEvent e) {
+                if (emailField.getText().equals("example@mail.com")) {
+                    emailField.setText("");
+                    emailField.setForeground(Color.BLACK);
                 }
             }
         });
-        return field;
+        add(emailField);
+
+        // --- Create Account Button (بنفس نمطكم الفخم) ---
+        JButton signUpBtn = new JButton("Create Account");
+        signUpBtn.setBackground(Color.WHITE);
+        signUpBtn.setForeground(TURQUOISE_COLOR);
+        signUpBtn.setFont(new Font("Segoe UI", Font.BOLD, 22));
+        signUpBtn.setBorder(BorderFactory.createLineBorder(TURQUOISE_COLOR, 3));
+        signUpBtn.setBounds(40, 380, 350, 55);
+        signUpBtn.setCursor(new Cursor(Cursor.HAND_CURSOR));
+
+        signUpBtn.addActionListener(e -> {
+            String user = userField.getText();
+            String pass = new String(passField.getPassword());
+            String email = emailField.getText();
+
+            if (user.isEmpty() || pass.isEmpty() || email.isEmpty()) {
+                JOptionPane.showMessageDialog(this, "Please fill all fields!");
+                return;
+            }
+
+            // استدعاء ميثود التسجيل المعدلة اللي بتستقبل 3 باراميترات
+            boolean success = authService.registerNewUser(user, pass, email);
+
+            if (success) {
+                JOptionPane.showMessageDialog(this, "Account Created! A welcome email will be sent to: " + email);
+                new ModernLoginFrame().setVisible(true);
+                dispose();
+            } else {
+                JOptionPane.showMessageDialog(this,
+                        "Registration Failed!\n- Check if username exists.\n- Use only letters, numbers, dots or underscores.",
+                        "Error", JOptionPane.ERROR_MESSAGE);
+            }
+        });
+        add(signUpBtn);
+
+        // --- Back to Login ---
+        JButton backBtn = new JButton("Already have an account? Login");
+        backBtn.setBounds(40, 450, 350, 30);
+        backBtn.setContentAreaFilled(false);
+        backBtn.setBorderPainted(false);
+        backBtn.setForeground(Color.GRAY);
+        backBtn.addActionListener(e -> {
+            new ModernLoginFrame().setVisible(true);
+            dispose();
+        });
+        add(backBtn);
+    }
+
+    private void styleLabel(JLabel lbl, int y) {
+        lbl.setFont(new Font("Segoe UI", Font.BOLD, 13));
+        lbl.setForeground(new Color(128, 0, 0)); // نفس اللون الأحمر الغامق اللي بملف اللوجن
+        lbl.setBounds(40, y, 150, 20);
     }
 }
