@@ -1,24 +1,36 @@
 package com.system.services;
 
+import com.system.observers.NotificationObserver;
 import javax.mail.*;
 import javax.mail.internet.*;
 import java.util.Properties;
 
-public class EmailService {
-    // تأكدي إن الإيميل صحيح 100% وبدون مسافات قبله أو بعده
-    private static final String MY_EMAIL = "raghdmansour91@gmail.com";
+/**
+ * Service responsible for sending email notifications.
+ * Implements NotificationObserver for pattern compliance.
+ * @author Raghd and Farah
+ */
+public class EmailService implements NotificationObserver {
 
-    // انسخي الكود الـ 16 حرف بدون مسافات نهائياً
+    private static final String MY_EMAIL = "raghdmansour91@gmail.com";
     private static final String APP_PASSWORD = "ebnoqizmsthoewjq";
 
-    public static void sendWelcomeEmail(String recipientEmail, String username) {
+    /**
+     * Implementation of the Observer update method.
+     * @param recipient The recipient's email address.
+     * @param message The content to send.
+     */
+    @Override
+    public void update(String recipient, String message) {
+        sendWelcomeEmail(recipient, message);
+    }
+
+    public void sendWelcomeEmail(String recipientEmail, String content) {
         Properties props = new Properties();
         props.put("mail.smtp.auth", "true");
-        props.put("mail.smtp.starttls.enable", "true"); // تفعيل التشفير
+        props.put("mail.smtp.starttls.enable", "true");
         props.put("mail.smtp.host", "smtp.gmail.com");
         props.put("mail.smtp.port", "587");
-
-        // إعدادات إضافية لحل مشاكل الاتصال في الإصدارات الحديثة
         props.put("mail.smtp.ssl.protocols", "TLSv1.2");
         props.put("mail.smtp.ssl.trust", "smtp.gmail.com");
 
@@ -29,15 +41,14 @@ public class EmailService {
             }
         });
 
-        // تفعيل الـ Debug عشان تشوفي شو بصير بين الكود وجوجل بالظبط في الكونسول
         session.setDebug(true);
 
         try {
             Message message = new MimeMessage(session);
             message.setFrom(new InternetAddress(MY_EMAIL));
             message.setRecipients(Message.RecipientType.TO, InternetAddress.parse(recipientEmail));
-            message.setSubject("Welcome to Our System! 🎉");
-            message.setText("Hello " + username + ",\n\nYour account has been created successfully!");
+            message.setSubject("System Notification");
+            message.setText(content);
 
             Transport.send(message);
             System.out.println("✅ DONE! Email sent to: " + recipientEmail);

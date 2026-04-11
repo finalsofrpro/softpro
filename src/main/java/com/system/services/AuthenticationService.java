@@ -1,25 +1,36 @@
 package com.system.services;
 
 import com.system.models.Role;
+import com.system.observers.NotificationObserver;
 import java.io.*;
-import java.util.HashMap;
-import java.util.Map;
+import java.util.*;
 
 /**
- * @author Raghd Mansour & Farah
- * خدمة التحقق من الهوية - النسخة النهائية (تخزين الإيميل + حماية الصيغة + Ignore Case)
+ * Service class responsible for user authentication and account management.
+ * This class acts as the 'Subject' in the Observer pattern.
+ *  @author Raghad  and Farah
+ * @version 1.0
  */
 public class AuthenticationService {
     private Map<String, String> userAccounts = new HashMap<>(); // يحمل: Username -> Password
     private Map<String, String> userEmails = new HashMap<>();   // يحمل: Username -> Email
     private Map<String, String> adminAccounts = new HashMap<>();
 
+    // قائمة المراقبين (Observer Pattern) - US 3.1
+    private List<NotificationObserver> observers = new ArrayList<>();
+
     private final String USER_FILE = "users.txt";
     private final String ADMIN_FILE = "admins.txt";
 
+    /**
+     * Constructor initializes the service, loads data, and registers default observers.
+     */
     public AuthenticationService() {
-        loadAccounts(USER_FILE, userAccounts); // يتم تحميل الإيميلات أيضاً داخل هذه الميثود
+        loadAccounts(USER_FILE, userAccounts);
         loadAccounts(ADMIN_FILE, adminAccounts);
+
+        // إضافة الـ EmailService كمراقب تلقائياً عند تشغيل الخدمة
+        addObserver(new EmailService());
 
         if (adminAccounts.isEmpty()) {
             adminAccounts.put("admin", "admin123");
@@ -27,13 +38,38 @@ public class AuthenticationService {
         }
     }
 
-    // فحص صيغة اليوزرنيم (أحرف، أرقام، نقطة، شرطة سفلية فقط)
+    /**
+     * Adds a new observer to the notification list.
+     * @param observer The observer to be added.
+     */
+    public void addObserver(NotificationObserver observer) {
+        if (observer != null) {
+            observers.add(observer);
+        }
+    }
+
+    /**
+     * Notifies all registered observers.
+     * @param email The recipient email.
+     * @param message The message content.
+     */
+    private void notifyObservers(String email, String message) {
+        for (NotificationObserver observer : observers) {
+            observer.update(email, message);
+        }
+    }
+
+    // فحص صيغة اليوزرنيم
     private boolean isValidUsername(String username) {
         return username != null && username.matches("^[a-zA-Z0-9._]+$");
     }
 
     /**
-     * تسجيل مستخدم جديد مع الإيميل
+     * Registers a new user.
+     * @param username The unique username.
+     * @param password The account password.
+     * @param email The user email.
+     * @return true if registration is successful.
      */
     public boolean registerNewUser(String username, String password, String email) {
         // 1. فحص الصيغة
@@ -48,32 +84,21 @@ public class AuthenticationService {
         userAccounts.put(username, password);
         userEmails.put(username, email);
 
-        // 4. حفظ في الملف (Username,Password,Email)
+        // 4. حفظ في الملف
         saveAccount(USER_FILE, username, password + "," + email);
 
-        // 5. إرسال إيميل ترحيبي في Thread منفصل (عشان البرنامج ما يعلق)
-        new Thread(() -> EmailService.sendWelcomeEmail(email, username)).start();
+        // 5. إرسال إشعار عبر الـ Observers في Thread منفصل
+        String welcomeMessage = "Hello " + username + ",\n\nYour account has been created successfully!";
+        new Thread(() -> notifyObservers(email, welcomeMessage)).start();
 
         return true;
     }
 
     /**
-     * تسجيل أدمن جديد (الأدمن لا يحتاج إيميل حالياً حسب الطلب)
-     */
-    public boolean registerNewAdmin(String username, String password) {
-        if (!isValidUsername(username)) return false;
-
-        for (String existingAdmin : adminAccounts.keySet()) {
-            if (existingAdmin.equalsIgnoreCase(username)) return false;
-        }
-
-        adminAccounts.put(username, password);
-        saveAccount(ADMIN_FILE, username, password);
-        return true;
-    }
-
-    /**
-     * فحص الدخول
+     * Authenticates a user or admin.
+     * @param username Username input.
+     * @param password Password input.
+     * @return The user Role.
      */
     public Role login(String username, String password) {
         // فحص الأدمن
@@ -89,11 +114,9 @@ public class AuthenticationService {
                 return Role.USER;
             }
         }
-
         return Role.NONE;
     }
 
-    // ميثود مساعدة للحفظ في الملف
     private void saveAccount(String filePath, String user, String data) {
         try (PrintWriter out = new PrintWriter(new FileWriter(filePath, true))) {
             out.println(user + "," + data);
@@ -102,7 +125,6 @@ public class AuthenticationService {
         }
     }
 
-    // ميثود مساعدة لتحميل البيانات من الملفات
     private void loadAccounts(String filePath, Map<String, String> map) {
         File file = new File(filePath);
         if (!file.exists()) return;
@@ -112,11 +134,9 @@ public class AuthenticationService {
             while ((line = br.readLine()) != null) {
                 String[] parts = line.split(",");
                 if (parts.length >= 2) {
-                    map.put(parts[0], parts[1]); // parts[0]=User, parts[1]=Pass
-
-                    // إذا كان الملف هو ملف اليوزرز وفيه إيميل (الخانة الثالثة)
+                    map.put(parts[0], parts[1]);
                     if (filePath.equals(USER_FILE) && parts.length == 3) {
-                        userEmails.put(parts[0], parts[2]); // parts[2]=Email
+                        userEmails.put(parts[0], parts[2]);
                     }
                 }
             }
