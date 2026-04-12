@@ -7,30 +7,42 @@ import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
 
-
- // مستودع المواعيد - يدعم التخزين في appointments.txt بـ 5 أعمدة
-
-
+/**
+ * Repository class responsible for managing appointment data persistence.
+ * It handles saving to and loading from a text file, ensuring data integrity
+ * and preventing time conflicts.
+ * * @author Raghad and Farah
+ * @version 1.0
+ */
 public class AppointmentRepository {
     private List<Appointment> appointments = new ArrayList<>();
     private final String FILE_NAME = "appointments.txt";
     private final DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm");
 
+    /**
+     * Constructs the repository and automatically loads existing appointments from the file.
+     */
     public AppointmentRepository() {
-        loadFromFile(); // تحميل المواعيد المخزنة فور استدعاء الكلاس
+        loadFromFile();
     }
 
+    /**
+     * Adds a new appointment to the system after validating ID uniqueness
+     * and checking for schedule overlaps.
+     * * @param newApp The new appointment object to be added.
+     * @throws IllegalArgumentException If the ID exists or if there is a time conflict.
+     */
     public void addAppointment(Appointment newApp) {
         LocalDateTime newStart = newApp.getDateTime();
         LocalDateTime newEnd = newStart.plusMinutes(newApp.getDurationMinutes());
 
         for (Appointment existing : appointments) {
-            // فحص الـ ID المكرر
+            // Check for duplicate ID
             if (existing.getId() == newApp.getId()) {
                 throw new IllegalArgumentException("Appointment ID already exists!");
             }
 
-            // فحص تضارب الوقت (Overlapping)
+            // Check for Overlapping time
             LocalDateTime existingStart = existing.getDateTime();
             LocalDateTime existingEnd = existingStart.plusMinutes(existing.getDurationMinutes());
 
@@ -44,24 +56,33 @@ public class AppointmentRepository {
         saveToFile();
     }
 
+    /**
+     * Removes an appointment from the list based on its ID and updates the storage.
+     * * @param id The unique identifier of the appointment to be deleted.
+     */
     public void deleteAppointment(int id) {
         appointments.removeIf(a -> a.getId() == id);
         saveToFile();
     }
 
+    /**
+     * Retrieves all available appointments by refreshing the data from the file.
+     * * @return A list of all stored appointments.
+     */
     public List<Appointment> getAvailableAppointments() {
-        // نحدث القائمة من الملف قبل الإرجاع للتأكد من مزامنة البيانات
         appointments.clear();
         loadFromFile();
         return appointments;
     }
 
-
-
+    /**
+     * Synchronizes the current list of appointments to the text file.
+     * Data is stored using the Pipe (|) delimiter for structured parsing.
+     */
     public void saveToFile() {
-        try (PrintWriter out = new PrintWriter(new FileWriter("appointments.txt"))) {
+        try (PrintWriter out = new PrintWriter(new FileWriter(FILE_NAME))) {
             for (Appointment app : appointments) {
-                // الترتيب: ID, DateTime, Duration, Status, MaxParticipants, Type, BookedBy
+                // Format: ID|DateTime|Duration|Status|MaxParticipants|Type|BookedBy
                 out.println(app.getId() + "|" +
                         app.getDateTime() + "|" +
                         app.getDurationMinutes() + "|" +
@@ -71,13 +92,17 @@ public class AppointmentRepository {
                         app.getBookedBy());
             }
         } catch (IOException e) {
-            e.printStackTrace();
+            System.err.println("Error saving to file: " + e.getMessage());
         }
     }
 
+    /**
+     * Loads appointment records from the text file into the in-memory list.
+     * Parses each line and reconstructs Appointment objects.
+     */
     public void loadFromFile() {
         appointments.clear();
-        File file = new File("appointments.txt");
+        File file = new File(FILE_NAME);
         if (!file.exists()) return;
 
         try (BufferedReader br = new BufferedReader(new FileReader(file))) {
@@ -85,12 +110,10 @@ public class AppointmentRepository {
             while ((line = br.readLine()) != null) {
                 if (line.trim().isEmpty()) continue;
 
-                // بنقسم السطر باستخدام الـ Pipe |
                 String[] p = line.split("\\|");
 
                 if (p.length >= 6) {
                     int id = Integer.parseInt(p[0]);
-                    // LocalDateTime.parse بدون فورمارتر بتعرف تقرأ التاريخ اللي فيه حرف T تلقائياً
                     LocalDateTime dt = LocalDateTime.parse(p[1]);
                     int dur = Integer.parseInt(p[2]);
                     String status = p[3];
@@ -105,7 +128,7 @@ public class AppointmentRepository {
                 }
             }
         } catch (Exception e) {
-            System.out.println("Error loading: " + e.getMessage());
+            System.err.println("Error loading file: " + e.getMessage());
         }
     }
 }
