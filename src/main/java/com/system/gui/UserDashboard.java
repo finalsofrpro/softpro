@@ -1,14 +1,20 @@
 package com.system.gui;
 
 import com.system.models.Appointment;
+import com.system.services.BookingService;
 import org.example.Main;
 import javax.swing.*;
 import javax.swing.table.DefaultTableCellRenderer;
 import javax.swing.table.DefaultTableModel;
 import java.awt.*;
 import java.time.format.DateTimeFormatter;
-import java.util.List;
 
+/**
+ * User Dashboard interface for managing personal appointments.
+ * Features include visual status indicators (Green/Red), filtering, and booking actions.
+ * * @author Raghad and Farah
+ * @version 1.0
+ */
 public class UserDashboard extends JFrame {
     private final Color TURQUOISE_COLOR = new Color(0, 188, 212);
     private JTable appointmentTable;
@@ -18,6 +24,10 @@ public class UserDashboard extends JFrame {
     private String currentUsername;
     private boolean showOnlyMyBookings = false;
 
+    /**
+     * Constructs the user dashboard and initializes the visual components.
+     * @param username The name of the currently logged-in user.
+     */
     public UserDashboard(String username) {
         this.currentUsername = username.trim();
         setTitle("User Dashboard - " + username);
@@ -26,6 +36,7 @@ public class UserDashboard extends JFrame {
         setLocationRelativeTo(null);
         setLayout(new BorderLayout());
 
+        // Sidebar Navigation
         JPanel sidebar = new JPanel();
         sidebar.setBackground(TURQUOISE_COLOR);
         sidebar.setPreferredSize(new Dimension(220, 600));
@@ -43,23 +54,49 @@ public class UserDashboard extends JFrame {
         sidebar.add(allAppsBtn); sidebar.add(myBookingsBtn); sidebar.add(logoutBtn);
         add(sidebar, BorderLayout.WEST);
 
+        // Main Content Area
         JPanel mainPanel = new JPanel(new BorderLayout(10, 10));
         mainPanel.setBackground(Color.WHITE);
         mainPanel.setBorder(BorderFactory.createEmptyBorder(20, 20, 20, 20));
 
+        // Top Filter Panel
         durationFilter = new JComboBox<>(new String[]{"All", "15", "30", "45", "60"});
         durationFilter.addActionListener(e -> refreshTableData());
         JPanel topPanel = new JPanel(new FlowLayout(FlowLayout.LEFT));
-        topPanel.add(new JLabel("Filter Duration: ")); topPanel.add(durationFilter);
+        topPanel.setBackground(Color.WHITE);
+        topPanel.add(new JLabel("Filter Duration (Min): ")); topPanel.add(durationFilter);
         mainPanel.add(topPanel, BorderLayout.NORTH);
 
+        // Table Setup
         tableModel = new DefaultTableModel(new String[]{"ID", "Date & Time", "Duration", "Type", "Status", "Booked By"}, 0) {
             @Override public boolean isCellEditable(int r, int c) { return false; }
         };
         appointmentTable = new JTable(tableModel);
         appointmentTable.setRowHeight(35);
+
+        // --- تعديل الألوان (Status Color Renderer) ---
+        appointmentTable.getColumnModel().getColumn(4).setCellRenderer(new DefaultTableCellRenderer() {
+            @Override
+            public Component getTableCellRendererComponent(JTable table, Object value, boolean isSelected, boolean hasFocus, int row, int column) {
+                Component c = super.getTableCellRendererComponent(table, value, isSelected, hasFocus, row, column);
+                String status = (String) value;
+                if ("AVAILABLE".equalsIgnoreCase(status)) {
+                    c.setForeground(new Color(0, 150, 0)); // لون أخضر
+                    c.setFont(c.getFont().deriveFont(Font.BOLD));
+                } else if ("BOOKED".equalsIgnoreCase(status)) {
+                    c.setForeground(Color.RED); // لون أحمر
+                    c.setFont(c.getFont().deriveFont(Font.BOLD));
+                } else {
+                    c.setForeground(Color.BLACK);
+                }
+                return c;
+            }
+        });
+        // --------------------------------------------
+
         mainPanel.add(new JScrollPane(appointmentTable), BorderLayout.CENTER);
 
+        // Bottom Action Buttons
         JPanel actionPanel = new JPanel(new GridLayout(1, 2, 10, 0));
         JButton bookBtn = new JButton("Confirm Booking");
         JButton cancelBtn = new JButton("Cancel Booking");
@@ -81,21 +118,19 @@ public class UserDashboard extends JFrame {
         b.setFont(new Font("Segoe UI", Font.BOLD, 22));
         b.setBorder(BorderFactory.createLineBorder(TURQUOISE_COLOR, 3));
         b.setBackground(Color.WHITE);
+        b.setFocusPainted(false);
     }
-
-
 
     private void refreshTableData() {
         tableModel.setRowCount(0);
         String filter = (String) durationFilter.getSelectedItem();
-        String userEmail = getUserEmail(currentUsername); // نحتاج الإيميل هنا
+        String userEmail = getUserEmail(currentUsername);
 
         for (Appointment app : Main.repo.getAvailableAppointments()) {
             boolean durMatch = filter.equals("All") || String.valueOf(app.getDurationMinutes()).equals(filter);
             if (!durMatch) continue;
 
             if (showOnlyMyBookings) {
-                // نقارن الإيميل بالإيميل
                 if ("BOOKED".equalsIgnoreCase(app.getStatus()) && userEmail.equalsIgnoreCase(app.getBookedBy())) {
                     addRow(app);
                 }
@@ -111,16 +146,25 @@ public class UserDashboard extends JFrame {
 
     private void handleBooking() {
         int row = appointmentTable.getSelectedRow();
-        if (row == -1) return;
+        if (row == -1) {
+            JOptionPane.showMessageDialog(this, "Please select an appointment first!");
+            return;
+        }
         int id = (int) tableModel.getValueAt(row, 0);
         Appointment selected = Main.repo.getAvailableAppointments().stream().filter(a -> a.getId() == id).findFirst().orElse(null);
-        if (selected != null && "AVAILABLE".equalsIgnoreCase(selected.getStatus())) {
+
+        if (selected != null) {
+            if (!"AVAILABLE".equalsIgnoreCase(selected.getStatus())) {
+                JOptionPane.showMessageDialog(this, "This slot is already booked!");
+                return;
+            }
+
             String email = getUserEmail(currentUsername);
-            if (Main.bookingService.book(selected, email)) {
-                JOptionPane.showMessageDialog(this, "Success!");
+            if (Main.bookingService != null && Main.bookingService.book(selected, email)) {
+                JOptionPane.showMessageDialog(this, "Booking Successful! Confirmation email sent.");
                 refreshTableData();
             } else {
-                JOptionPane.showMessageDialog(this, "Rules not met for " + selected.getType());
+                JOptionPane.showMessageDialog(this, "Booking Failed! Business rules not met.");
             }
         }
     }
@@ -133,23 +177,15 @@ public class UserDashboard extends JFrame {
         }
 
         int id = (int) tableModel.getValueAt(row, 0);
-        Appointment selected = Main.repo.getAvailableAppointments().stream()
-                .filter(a -> a.getId() == id).findFirst().orElse(null);
-
-        // الخطوة الأهم: جلب إيميل المستخدم الحالي للمقارنة
+        Appointment selected = Main.repo.getAvailableAppointments().stream().filter(a -> a.getId() == id).findFirst().orElse(null);
         String userEmail = getUserEmail(currentUsername);
 
-        // نقارن إيميل المستخدم الحالي مع الإيميل المخزن في خانة BookedBy
-        if (selected != null && "BOOKED".equalsIgnoreCase(selected.getStatus()) &&
-                userEmail.equalsIgnoreCase(selected.getBookedBy())) {
-
-            // استدعاء خدمة الإلغاء
+        if (selected != null && "BOOKED".equalsIgnoreCase(selected.getStatus()) && userEmail.equalsIgnoreCase(selected.getBookedBy())) {
             Main.bookingService.cancel(selected, userEmail);
-
             refreshTableData();
-            JOptionPane.showMessageDialog(this, "Booking Cancelled! Email sent to: " + userEmail);
+            JOptionPane.showMessageDialog(this, "Cancelled! Cancellation email sent.");
         } else {
-            JOptionPane.showMessageDialog(this, "You can only cancel your own bookings!");
+            JOptionPane.showMessageDialog(this, "Error: You can only cancel your own bookings!");
         }
     }
 
@@ -168,6 +204,7 @@ public class UserDashboard extends JFrame {
         JButton btn = new JButton(text);
         btn.setPreferredSize(new Dimension(200, 45));
         btn.setFont(new Font("Segoe UI", Font.BOLD, 14));
+        btn.setCursor(new Cursor(Cursor.HAND_CURSOR));
         return btn;
     }
 }

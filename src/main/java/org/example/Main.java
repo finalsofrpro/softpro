@@ -1,36 +1,53 @@
 package org.example;
 
 import com.system.gui.ModernLoginFrame;
-import com.system.models.Appointment;
 import com.system.repository.AppointmentRepository;
 import com.system.services.AuthenticationService;
 import com.system.services.BookingService;
-import com.system.strategies.UrgentStrategy; // استيراد الاستراتيجية المحدثة
-
+import com.system.services.EmailService;
 import javax.swing.SwingUtilities;
 import javax.swing.UIManager;
-import java.time.LocalDateTime;
 
+/**
+ * The main entry point for the Appointment Scheduling System.
+ * This class initializes all core components, including repositories and services,
+ * and sets up the observer pattern for notifications.
+ * * @author Raghad and Farah
+ * @version 1.0
+ */
 public class Main {
-    // 1. تهيئة المستودع والخدمات (Static لسهولة الوصول إليها من كل الشاشات)
+
+    /** Global repository for appointment data management. */
     public static AppointmentRepository repo = new AppointmentRepository();
+
+    /** Global service for user authentication and account management. */
     public static AuthenticationService authService = new AuthenticationService();
 
-    // 2. تحديث الـ Strategy هنا: نبدأ بـ UrgentStrategy أو أي استراتيجية افتراضية
-    public static BookingService bookingService = new BookingService(repo, new UrgentStrategy());
+    /** * Global booking service initialized with a flexible strategy
+     * that accepts all appointment types for testing purposes.
+     */
+    public static BookingService bookingService = new BookingService(repo, appointment -> true);
 
+    /**
+     * Main method that launches the application.
+     * @param args Command line arguments (not used).
+     */
     public static void main(String[] args) {
-        // 3. تحميل البيانات من الملف فور بدء البرنامج
+        // 1. Load existing appointment records from storage
         repo.loadFromFile();
 
-        // 4. تحسين شكل الواجهة
+        // 2. CRITICAL: Register the EmailService as an observer to enable email notifications
+        // هذا السطر هو المسؤول عن تفعيل إرسال الإيميلات عند الحجز أو الإلغاء
+        bookingService.addObserver(new EmailService());
+
+        // 3. Set the system look and feel for the GUI
         try {
             UIManager.setLookAndFeel(UIManager.getSystemLookAndFeelClassName());
         } catch (Exception e) {
             e.printStackTrace();
         }
 
-        // 5. تشغيل واجهة الدخول
+        // 4. Start the application by displaying the login frame
         SwingUtilities.invokeLater(() -> {
             new ModernLoginFrame().setVisible(true);
         });

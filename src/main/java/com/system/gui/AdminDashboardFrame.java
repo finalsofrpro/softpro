@@ -129,26 +129,41 @@ public class AdminDashboardFrame extends JFrame {
     private void handleAppAction(String idS, String dateS, String durS, String typeS) {
         try {
             int id = Integer.parseInt(idS);
-            Appointment target = appointmentRepo.getAvailableAppointments().stream()
-                    .filter(a -> a.getId() == id).findFirst().orElse(null);
+            int duration = Integer.parseInt(durS);
+
+            // التحقق من القواعد قبل الإضافة
+            if ("Urgent".equalsIgnoreCase(typeS) && duration != 15) {
+                JOptionPane.showMessageDialog(this, "Error: Urgent appointments must be exactly 15 minutes!");
+                return;
+            }
+            if (!"Urgent".equalsIgnoreCase(typeS) && duration > 60) {
+                JOptionPane.showMessageDialog(this, "Error: Non-urgent appointments cannot exceed 60 minutes!");
+                return;
+            }
 
             if (currentSubMode.equals("ADD")) {
                 LocalDateTime dt = LocalDateTime.parse(dateS, DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm"));
-                appointmentRepo.addAppointment(new Appointment(id, dt, Integer.parseInt(durS), 1, typeS));
-                JOptionPane.showMessageDialog(this, "Added!");
-            } else if (currentSubMode.equals("EDIT") || currentSubMode.equals("DELETE")) {
+                appointmentRepo.addAppointment(new Appointment(id, dt, duration, 1, typeS));
+                JOptionPane.showMessageDialog(this, "Added successfully!");
+            }
+            // ... (باقي كود الـ Edit و Delete يبقى كما هو)
+            else if (currentSubMode.equals("EDIT") || currentSubMode.equals("DELETE")) {
+                Appointment target = appointmentRepo.getAvailableAppointments().stream()
+                        .filter(a -> a.getId() == id).findFirst().orElse(null);
                 if (target == null) return;
                 if ("BOOKED".equals(target.getStatus())) {
-                    new com.system.services.EmailService().sendEmail(target.getBookedBy(), "Notice about your appointment " + currentSubMode);
+                    new com.system.services.EmailService().sendEmail(target.getBookedBy(), "Notice: Appointment " + currentSubMode);
                 }
                 appointmentRepo.deleteAppointment(id);
                 if (currentSubMode.equals("EDIT")) {
                     LocalDateTime dt = LocalDateTime.parse(dateS, DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm"));
-                    appointmentRepo.addAppointment(new Appointment(id, dt, Integer.parseInt(durS), 1, typeS));
+                    appointmentRepo.addAppointment(new Appointment(id, dt, duration, 1, typeS));
                 }
                 JOptionPane.showMessageDialog(this, "Done!");
             }
-        } catch (Exception ex) { JOptionPane.showMessageDialog(this, "Error: " + ex.getMessage()); }
+        } catch (Exception ex) {
+            JOptionPane.showMessageDialog(this, "Error: Check your inputs! " + ex.getMessage());
+        }
         refresh();
     }
 
