@@ -3,14 +3,20 @@ package com.system.gui;
 import com.system.models.Appointment;
 import com.system.repository.AppointmentRepository;
 import com.system.services.AuthenticationService;
+import com.system.services.EmailService;
 import org.example.Main;
 import javax.swing.*;
 import javax.swing.table.DefaultTableModel;
 import java.awt.*;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
-import java.util.ArrayList;
 
+/**
+ * Advanced Admin Dashboard for managing system appointments.
+ * Features automated notifications when appointments are cancelled by the admin.
+ * * @author Raghad and Farah
+ * @version 1.2
+ */
 public class AdminDashboardFrame extends JFrame {
     private final Color TURQUOISE_COLOR = new Color(0, 188, 212);
     private AuthenticationService authService = Main.authService;
@@ -73,6 +79,7 @@ public class AdminDashboardFrame extends JFrame {
 
     private void showManageAppointments() {
         contentPanel.removeAll();
+
         JPanel togglePanel = new JPanel(new GridLayout(1, 3, 20, 0));
         togglePanel.setBackground(Color.WHITE);
         togglePanel.setBorder(BorderFactory.createEmptyBorder(20, 150, 20, 150));
@@ -92,36 +99,61 @@ public class AdminDashboardFrame extends JFrame {
         togglePanel.add(addMode); togglePanel.add(editMode); togglePanel.add(deleteMode);
         contentPanel.add(togglePanel, BorderLayout.NORTH);
 
-        JPanel workArea = new JPanel(new GridLayout(10, 1, 5, 5));
+        JPanel workArea = new JPanel(new BorderLayout(10, 10));
         workArea.setBackground(Color.WHITE);
-        workArea.setBorder(BorderFactory.createEmptyBorder(10, 150, 30, 150));
+
+        JPanel inputFields = new JPanel(new GridLayout(0, 1, 5, 5));
+        inputFields.setBackground(Color.WHITE);
+        inputFields.setBorder(BorderFactory.createEmptyBorder(10, 150, 10, 150));
 
         JTextField idF = new JTextField();
         JTextField dateF = new JTextField("2026-04-15 10:00");
         JTextField durF = new JTextField("30");
         JComboBox<String> typeBox = new JComboBox<>(new String[]{"General", "Urgent", "Virtual"});
 
-        JButton actionBtn = new JButton("Confirm " + currentSubMode);
-        applyStyledButton(actionBtn, 20, 3);
-
         if (currentSubMode.equals("ADD")) {
-            workArea.add(new JLabel("Enter New ID:")); workArea.add(idF);
-            workArea.add(new JLabel("Time (yyyy-MM-dd HH:mm):")); workArea.add(dateF);
-            workArea.add(new JLabel("Duration (Min):")); workArea.add(durF);
-            workArea.add(new JLabel("Type:")); workArea.add(typeBox);
+            inputFields.add(new JLabel("Enter New ID:")); inputFields.add(idF);
+            inputFields.add(new JLabel("Time (yyyy-MM-dd HH:mm):")); inputFields.add(dateF);
+            inputFields.add(new JLabel("Duration (Min):")); inputFields.add(durF);
+            inputFields.add(new JLabel("Type:")); inputFields.add(typeBox);
         } else if (currentSubMode.equals("EDIT")) {
-            workArea.add(new JLabel("Target ID:")); workArea.add(idF);
-            workArea.add(new JLabel("New Time:")); workArea.add(dateF);
-            workArea.add(new JLabel("New Duration:")); workArea.add(durF);
-            workArea.add(new JLabel("New Type:")); workArea.add(typeBox);
+            inputFields.add(new JLabel("Target ID (Select from table):")); inputFields.add(idF);
+            inputFields.add(new JLabel("New Time:")); inputFields.add(dateF);
+            inputFields.add(new JLabel("New Duration:")); inputFields.add(durF);
+            inputFields.add(new JLabel("New Type:")); inputFields.add(typeBox);
         } else {
-            workArea.add(new JLabel("Enter ID to Delete:")); workArea.add(idF);
+            inputFields.add(new JLabel("ID to Delete (Select from table):")); inputFields.add(idF);
         }
 
-        workArea.add(new JLabel(""));
-        workArea.add(actionBtn);
+        JButton actionBtn = new JButton("Confirm " + currentSubMode);
+        applyStyledButton(actionBtn, 20, 3);
+        inputFields.add(new JLabel(""));
+        inputFields.add(actionBtn);
         actionBtn.addActionListener(e -> handleAppAction(idF.getText(), dateF.getText(), durF.getText(), typeBox.getSelectedItem().toString()));
 
+        workArea.add(inputFields, BorderLayout.NORTH);
+
+        String[] cols = {"ID", "Time", "Duration", "Type", "Status", "Booked By"};
+        DefaultTableModel model = new DefaultTableModel(cols, 0) {
+            @Override public boolean isCellEditable(int r, int c) { return false; }
+        };
+        for (Appointment a : appointmentRepo.getAvailableAppointments()) {
+            model.addRow(new Object[]{a.getId(), a.getDateTime().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm")),
+                    a.getDurationMinutes(), a.getType(), a.getStatus(), a.getBookedBy()});
+        }
+        JTable previewTable = new JTable(model);
+        previewTable.getSelectionModel().addListSelectionListener(e -> {
+            if (!e.getValueIsAdjusting() && previewTable.getSelectedRow() != -1 && !currentSubMode.equals("ADD")) {
+                int row = previewTable.getSelectedRow();
+                idF.setText(model.getValueAt(row, 0).toString());
+                dateF.setText(model.getValueAt(row, 1).toString());
+                durF.setText(model.getValueAt(row, 2).toString());
+                typeBox.setSelectedItem(model.getValueAt(row, 3).toString());
+                if (currentSubMode.equals("EDIT")) idF.setEditable(false);
+            }
+        });
+
+        workArea.add(new JScrollPane(previewTable), BorderLayout.CENTER);
         contentPanel.add(workArea, BorderLayout.CENTER);
         refresh();
     }
@@ -129,42 +161,45 @@ public class AdminDashboardFrame extends JFrame {
     private void handleAppAction(String idS, String dateS, String durS, String typeS) {
         try {
             int id = Integer.parseInt(idS);
-            int duration = Integer.parseInt(durS);
-
-            // التحقق من القواعد قبل الإضافة
-            if ("Urgent".equalsIgnoreCase(typeS) && duration != 15) {
-                JOptionPane.showMessageDialog(this, "Error: Urgent appointments must be exactly 15 minutes!");
-                return;
-            }
-            if (!"Urgent".equalsIgnoreCase(typeS) && duration > 60) {
-                JOptionPane.showMessageDialog(this, "Error: Non-urgent appointments cannot exceed 60 minutes!");
-                return;
-            }
+            int duration = currentSubMode.equals("DELETE") ? 0 : Integer.parseInt(durS);
 
             if (currentSubMode.equals("ADD")) {
                 LocalDateTime dt = LocalDateTime.parse(dateS, DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm"));
                 appointmentRepo.addAppointment(new Appointment(id, dt, duration, 1, typeS));
-                JOptionPane.showMessageDialog(this, "Added successfully!");
-            }
-            // ... (باقي كود الـ Edit و Delete يبقى كما هو)
-            else if (currentSubMode.equals("EDIT") || currentSubMode.equals("DELETE")) {
+                JOptionPane.showMessageDialog(this, "Added!");
+            } else {
                 Appointment target = appointmentRepo.getAvailableAppointments().stream()
                         .filter(a -> a.getId() == id).findFirst().orElse(null);
-                if (target == null) return;
-                if ("BOOKED".equals(target.getStatus())) {
-                    new com.system.services.EmailService().sendEmail(target.getBookedBy(), "Notice: Appointment " + currentSubMode);
+
+                if (target == null) {
+                    JOptionPane.showMessageDialog(this, "ID not found!");
+                    return;
                 }
+
+                if ("BOOKED".equals(target.getStatus())) {
+                    // --- رسالة الإيميل المحدثة ---
+                    String msg = "Hello,\n\n" +
+                            "We would like to inform you that your appointment (ID: " + id + ") " +
+                            "has been cancelled by the System Administrator.\n\n" +
+                            "You can now log in to the system and book a new available slot at your convenience.\n\n" +
+                            "Best regards,\nAdministration Team";
+
+                    new EmailService().sendEmail(target.getBookedBy(), msg);
+                }
+
                 appointmentRepo.deleteAppointment(id);
                 if (currentSubMode.equals("EDIT")) {
                     LocalDateTime dt = LocalDateTime.parse(dateS, DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm"));
                     appointmentRepo.addAppointment(new Appointment(id, dt, duration, 1, typeS));
+                    JOptionPane.showMessageDialog(this, "Updated!");
+                } else {
+                    JOptionPane.showMessageDialog(this, "Deleted & User Notified!");
                 }
-                JOptionPane.showMessageDialog(this, "Done!");
             }
         } catch (Exception ex) {
-            JOptionPane.showMessageDialog(this, "Error: Check your inputs! " + ex.getMessage());
+            JOptionPane.showMessageDialog(this, "Error: " + ex.getMessage());
         }
-        refresh();
+        showManageAppointments();
     }
 
     private void showManageUsers() {
@@ -216,6 +251,7 @@ public class AdminDashboardFrame extends JFrame {
         btn.setFont(new Font("Segoe UI", Font.BOLD, 14));
         btn.setForeground(Color.WHITE); btn.setBackground(TURQUOISE_COLOR);
         btn.setFocusPainted(false); btn.setBorderPainted(false);
+        btn.setCursor(new Cursor(Cursor.HAND_CURSOR));
         return btn;
     }
 

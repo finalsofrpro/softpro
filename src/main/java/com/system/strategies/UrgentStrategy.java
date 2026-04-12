@@ -9,6 +9,8 @@ import com.system.models.Appointment;
 public class UrgentStrategy implements BookingStrategy {
     @Override
     public boolean isValid(Appointment appointment) {
-        return "Urgent".equalsIgnoreCase(appointment.getType()) && appointment.getDurationMinutes() == 15;
+        return "Urgent".equalsIgnoreCase(appointment.getType()) && appointment.getDurationMinutes() == 15
+
+                ;
     }
 }
