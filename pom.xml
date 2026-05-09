@@ -16,8 +16,9 @@
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
 
         <sonar.organization>finalsofrpro</sonar.organization>
-
+        <sonar.coverage.exclusions>**/gui/**,**/org/example/**</sonar.coverage.exclusions>
     </properties>
+
 
     <dependencies>
 
@@ -80,7 +81,7 @@
 
                     <execution>
                         <id>report</id>
-                        <phase>test</phase>
+                        <phase>verify</phase>
                         <goals>
                             <goal>report</goal>
                         </goals>
