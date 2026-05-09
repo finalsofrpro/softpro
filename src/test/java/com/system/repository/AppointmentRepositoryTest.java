@@ -2,56 +2,52 @@ package com.system.repository;
 
 import com.system.models.Appointment;
 import org.junit.jupiter.api.Test;
-
 import java.time.LocalDateTime;
-
+import org.junit.jupiter.api.BeforeEach;
 import static org.junit.jupiter.api.Assertions.*;
 
 public class AppointmentRepositoryTest {
 
-    private final LocalDateTime t1 = LocalDateTime.of(2025,1,1,10,0);
-    private final LocalDateTime t2 = LocalDateTime.of(2025,1,1,11,0);
-    private final LocalDateTime t3 = LocalDateTime.of(2025,1,1,12,0);
+    @BeforeEach
+    void cleanFile() {
+        new java.io.File("appointments.txt").delete();
+    }
 
     @Test
     void testAddAppointment() {
         AppointmentRepository repo = new AppointmentRepository();
-        repo.addAppointment(new Appointment(200, t1, 30));
+        Appointment a = new Appointment(200, LocalDateTime.now(), 30);
+        repo.addAppointment(a);
         assertFalse(repo.getAvailableAppointments().isEmpty());
-    }
-
-    @Test
-    void testDuplicateId() {
-        AppointmentRepository repo = new AppointmentRepository();
-        repo.addAppointment(new Appointment(201, t1, 30));
-
-        assertThrows(IllegalArgumentException.class,
-                () -> repo.addAppointment(new Appointment(201, t2, 30)));
     }
 
     @Test
     void testTimeConflict() {
         AppointmentRepository repo = new AppointmentRepository();
-        repo.addAppointment(new Appointment(202, t1, 30));
+        LocalDateTime time = LocalDateTime.now();
 
-        assertThrows(IllegalArgumentException.class,
-                () -> repo.addAppointment(new Appointment(203, t1.plusMinutes(10), 30)));
+        repo.addAppointment(new Appointment(202, time, 30));
+
+        assertThrows(IllegalArgumentException.class, () ->
+                repo.addAppointment(new Appointment(203, time.plusMinutes(10), 30))
+        );
     }
 
     @Test
-    void testDelete() {
+    void testGetAvailableAppointments() {
         AppointmentRepository repo = new AppointmentRepository();
-        repo.addAppointment(new Appointment(204, t1, 30));
-        repo.deleteAppointment(204);
+        repo.addAppointment(new Appointment(1, LocalDateTime.now(), 30));
 
-        assertTrue(repo.getAvailableAppointments().isEmpty());
+        assertFalse(repo.getAvailableAppointments().isEmpty());
     }
 
     @Test
     void testMultipleAppointmentsNoConflict() {
         AppointmentRepository repo = new AppointmentRepository();
-        repo.addAppointment(new Appointment(10, t1, 30));
-        repo.addAppointment(new Appointment(11, t2, 30));
+        LocalDateTime time = LocalDateTime.now();
+
+        repo.addAppointment(new Appointment(10, time, 30));
+        repo.addAppointment(new Appointment(11, time.plusHours(1), 30));
 
         assertEquals(2, repo.getAvailableAppointments().size());
     }
@@ -59,29 +55,50 @@ public class AppointmentRepositoryTest {
     @Test
     void testConflictMessage() {
         AppointmentRepository repo = new AppointmentRepository();
-        repo.addAppointment(new Appointment(50, t1, 30));
+        LocalDateTime time = LocalDateTime.now();
 
-        Exception ex = assertThrows(IllegalArgumentException.class,
-                () -> repo.addAppointment(new Appointment(51, t1.plusMinutes(10), 30)));
+        repo.addAppointment(new Appointment(50, time, 30));
+
+        Exception ex = assertThrows(IllegalArgumentException.class, () ->
+                repo.addAppointment(new Appointment(51, time.plusMinutes(10), 30))
+        );
 
         assertTrue(ex.getMessage().contains("Time Conflict"));
     }
 
-    // 🔥 FILE MODE (بدون تخريب التستات)
+    // 🔥🔥🔥 هاي أهم الإضافات لرفع الكفرج
 
     @Test
-    void testSaveToFile() {
-        AppointmentRepository repo = new AppointmentRepository(true);
+    void testDeleteAppointment() {
+        AppointmentRepository repo = new AppointmentRepository();
 
-        repo.deleteAppointment(300); // تنظيف
-        repo.addAppointment(new Appointment(300, t3, 30));
+        repo.addAppointment(new Appointment(5, LocalDateTime.now(), 30));
+        repo.deleteAppointment(5);
 
-        assertDoesNotThrow(repo::saveToFile);
+        boolean exists = repo.getAvailableAppointments()
+                .stream()
+                .anyMatch(a -> a.getId() == 5);
+
+        assertFalse(exists);
     }
 
     @Test
-    void testLoadFileNotExists() {
+    void testFileModeSaveAndLoad() {
         AppointmentRepository repo = new AppointmentRepository(true);
+
+        Appointment a = new Appointment(300, LocalDateTime.now().plusHours(5), 30);
+        repo.addAppointment(a);
+
+        // reload
+        repo.loadFromFile();
+
+        assertFalse(repo.getAvailableAppointments().isEmpty());
+    }
+
+    @Test
+    void testLoadFromFileWhenFileNotExists() {
+        AppointmentRepository repo = new AppointmentRepository(true);
+
         assertDoesNotThrow(repo::loadFromFile);
     }
 
@@ -89,8 +106,7 @@ public class AppointmentRepositoryTest {
     void testGetAvailableAppointmentsFileMode() {
         AppointmentRepository repo = new AppointmentRepository(true);
 
-        repo.deleteAppointment(500);
-        repo.addAppointment(new Appointment(500, t2, 30));
+        repo.addAppointment(new Appointment(400, LocalDateTime.now().plusHours(2), 30));
 
         assertFalse(repo.getAvailableAppointments().isEmpty());
     }
@@ -99,14 +115,59 @@ public class AppointmentRepositoryTest {
     void testDeleteWithFileMode() {
         AppointmentRepository repo = new AppointmentRepository(true);
 
-        repo.deleteAppointment(600);
-        repo.addAppointment(new Appointment(600, t3, 30));
-        repo.deleteAppointment(600);
+        repo.addAppointment(new Appointment(500, LocalDateTime.now(), 30));
+        repo.deleteAppointment(500);
 
         boolean exists = repo.getAvailableAppointments()
                 .stream()
-                .anyMatch(x -> x.getId() == 600);
+                .anyMatch(a -> a.getId() == 500);
 
         assertFalse(exists);
+    }
+
+    @Test
+    void testDeleteNonExisting() {
+        AppointmentRepository repo = new AppointmentRepository();
+
+        assertDoesNotThrow(() -> repo.deleteAppointment(123));
+    }
+
+    @Test
+    void testDeleteNonExistingDoesNotAffectData() {
+        AppointmentRepository repo = new AppointmentRepository();
+        repo.addAppointment(new Appointment(1, LocalDateTime.now(), 30));
+
+        repo.deleteAppointment(999);
+
+        assertEquals(1, repo.getAvailableAppointments().size());
+    }
+
+    @Test
+    void testDeleteNonExistingDoesNotThrow() {
+        AppointmentRepository repo = new AppointmentRepository();
+
+        assertDoesNotThrow(() -> repo.deleteAppointment(123));
+    }
+
+    @Test
+    void testEmptyAppointments() {
+        AppointmentRepository repo = new AppointmentRepository();
+
+        assertTrue(repo.getAvailableAppointments().isEmpty());
+    }
+
+    @Test
+    void testDuplicateId() {
+        AppointmentRepository repo = new AppointmentRepository();
+
+        LocalDateTime time = LocalDateTime.now();
+
+        repo.addAppointment(new Appointment(1, time, 30));
+
+        Exception ex = assertThrows(IllegalArgumentException.class, () ->
+                repo.addAppointment(new Appointment(1, time.plusHours(1), 30))
+        );
+
+        assertTrue(ex.getMessage().contains("ID"));
     }
 }
