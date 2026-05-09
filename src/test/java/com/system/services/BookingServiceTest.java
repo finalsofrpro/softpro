@@ -155,4 +155,19 @@ public class BookingServiceTest {
         verify(obs1).update(anyString(), anyString());
         verify(obs2).update(anyString(), anyString());
     }
+
+    @Test
+    void testBookFailsWhenNotAvailable() {
+        BookingStrategy strategy = mock(BookingStrategy.class);
+        AppointmentRepository repo = mock(AppointmentRepository.class);
+
+        BookingService service = new BookingService(repo, strategy);
+
+        Appointment app = new Appointment(10, LocalDateTime.now(), 15,1,"Urgent");
+        app.setStatus("BOOKED");
+
+        when(strategy.isValid(any())).thenReturn(true);
+
+        assertFalse(service.book(app, "test@test.com"));
+    }
 }

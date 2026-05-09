@@ -15,4 +15,11 @@ public class EmailServiceTest {
         EmailService emailService = new EmailService();
         emailService.sendEmail("test@test.com", "hello");
     }
+
+    @Test
+    void testUpdateMultipleTimes() {
+        EmailService emailService = new EmailService();
+        emailService.update("a@test.com", "msg1");
+        emailService.update("b@test.com", "msg2");
+    }
 }

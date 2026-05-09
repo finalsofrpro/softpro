@@ -52,4 +52,16 @@ public class AuthenticationServiceTest {
         AuthenticationService auth = new AuthenticationService(true);
         assertFalse(auth.registerNewAdmin("!!", "1234"));
     }
+
+    @Test
+    void testRegisterNullUsername() {
+        AuthenticationService auth = new AuthenticationService(true);
+        assertFalse(auth.registerNewUser(null, "123", "test@test.com"));
+    }
+
+    @Test
+    void testLoginAdmin() {
+        AuthenticationService auth = new AuthenticationService(true);
+        assertEquals(Role.ADMIN, auth.login("admin", "admin123"));
+    }
 }

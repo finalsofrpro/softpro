@@ -46,4 +46,18 @@ public class AppointmentTest {
         a.setType("Urgent");
         assertEquals("Urgent", a.getType());
     }
+
+    @Test
+    void testSetMaxParticipants() {
+        Appointment a = new Appointment(1, LocalDateTime.now(), 30);
+        a.setMaxParticipants(5);
+        assertEquals(5, a.getMaxParticipants());
+    }
+
+    @Test
+    void testSetBookedByEmpty() {
+        Appointment a = new Appointment(1, LocalDateTime.now(), 30);
+        a.setBookedBy("");
+        assertEquals("", a.getBookedBy());
+    }
 }
