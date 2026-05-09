@@ -76,6 +76,7 @@ public class StrategyTest {
         assertTrue(s.isValid(a));
     }
 
+
     @Test
     void testRangeDurationValid() {
         RangeDurationStrategy s = new RangeDurationStrategy();
