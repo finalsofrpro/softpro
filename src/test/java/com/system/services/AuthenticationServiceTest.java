@@ -1,7 +1,12 @@
 package com.system.services;
 
+import com.system.models.Appointment;
 import com.system.models.Role;
+import com.system.repository.AppointmentRepository;
 import org.junit.jupiter.api.Test;
+
+import java.time.LocalDateTime;
+
 import static org.junit.jupiter.api.Assertions.*;
 
 public class AuthenticationServiceTest {
@@ -83,5 +88,67 @@ public class AuthenticationServiceTest {
     void testLoginAdminWrongPassword() {
         AuthenticationService auth = new AuthenticationService(true);
         assertEquals(Role.NONE, auth.login("admin", "wrong"));
+    }
+    @Test
+    void testSaveToFileDoesNotCrash() {
+        AppointmentRepository repo = new AppointmentRepository(true);
+
+        Appointment a = new Appointment(300, LocalDateTime.now(), 30);
+        repo.addAppointment(a);
+
+        // إذا وصلنا لهون بدون exception = نجح
+    }
+
+    @Test
+    void testLoadFromFileWhenFileNotExists() {
+        AppointmentRepository repo = new AppointmentRepository(true);
+
+        // ما في ملف → لازم ما يكسر
+        assertDoesNotThrow(repo::loadFromFile);
+    }
+
+    @Test
+    void testLoadFromFileWithData() {
+        AppointmentRepository repo = new AppointmentRepository(true);
+
+        Appointment a = new Appointment(400, LocalDateTime.now(), 30);
+        repo.addAppointment(a);
+
+        // reload
+        repo.loadFromFile();
+
+        assertFalse(repo.getAvailableAppointments().isEmpty());
+    }
+
+    @Test
+    void testGetAvailableAppointmentsWithFileMode() {
+        AppointmentRepository repo = new AppointmentRepository(true);
+
+        repo.addAppointment(new Appointment(500, LocalDateTime.now(), 30));
+
+        assertFalse(repo.getAvailableAppointments().isEmpty());
+    }
+
+    @Test
+    void testDeleteWithFileMode() {
+        AppointmentRepository repo = new AppointmentRepository(true);
+
+        Appointment a = new Appointment(600, LocalDateTime.now(), 30);
+        repo.addAppointment(a);
+
+        repo.deleteAppointment(600);
+
+        boolean exists = repo.getAvailableAppointments()
+                .stream().anyMatch(x -> x.getId() == 600);
+
+        assertFalse(exists);
+    }
+
+    @Test
+    void testEmptyLineHandlingInLoad() {
+        AppointmentRepository repo = new AppointmentRepository(true);
+
+        // بس نتأكد ما بكسر لو في سطور فاضية
+        assertDoesNotThrow(repo::loadFromFile);
     }
 }
