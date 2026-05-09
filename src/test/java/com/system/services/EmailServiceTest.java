@@ -9,4 +9,10 @@ public class EmailServiceTest {
         EmailService emailService = new EmailService();
         emailService.update("test@test.com", "hello");
     }
+
+    @Test
+    void testSendEmailDoesNotCrash() {
+        EmailService emailService = new EmailService();
+        emailService.sendEmail("test@test.com", "hello");
+    }
 }

@@ -26,6 +26,8 @@ public class BookingServiceTest {
 
     private BookingService bookingService;
 
+    BookingStrategy mockStrategy = mock(BookingStrategy.class);
+
     @Mock
     private AppointmentRepository mockRepo;
 
@@ -132,5 +134,25 @@ public class BookingServiceTest {
         app.setStatus("AVAILABLE");
 
         assertFalse(bookingService.book(app, "test@test.com"));
+    }
+
+    @Test
+    void testMultipleObservers() {
+        BookingService service = new BookingService(mockRepo, mockStrategy);
+        NotificationObserver obs1 = mock(NotificationObserver.class);
+        NotificationObserver obs2 = mock(NotificationObserver.class);
+
+        service.addObserver(obs1);
+        service.addObserver(obs2);
+
+        Appointment app = new Appointment(1, LocalDateTime.now(), 15,1,"Urgent");
+        app.setStatus("AVAILABLE");
+
+        when(mockStrategy.isValid(any())).thenReturn(true);
+
+        service.book(app, "test@test.com");
+
+        verify(obs1).update(anyString(), anyString());
+        verify(obs2).update(anyString(), anyString());
     }
 }

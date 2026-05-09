@@ -39,4 +39,11 @@ public class AppointmentTest {
         assertEquals(5, a.getId());
         assertEquals(time, a.getDateTime());
         assertEquals(45, a.getDurationMinutes());    }
+
+    @Test
+    void testSetType() {
+        Appointment a = new Appointment(1, LocalDateTime.now(), 30);
+        a.setType("Urgent");
+        assertEquals("Urgent", a.getType());
+    }
 }

@@ -40,4 +40,16 @@ public class AuthenticationServiceTest {
         AuthenticationService auth = new AuthenticationService(true);
         assertEquals(Role.NONE, auth.login("wrong", "wrong"));
     }
+
+    @Test
+    void testRegisterAdmin() {
+        AuthenticationService auth = new AuthenticationService(true);
+        assertTrue(auth.registerNewAdmin("admin2", "1234"));
+    }
+
+    @Test
+    void testInvalidAdmin() {
+        AuthenticationService auth = new AuthenticationService(true);
+        assertFalse(auth.registerNewAdmin("!!", "1234"));
+    }
 }
