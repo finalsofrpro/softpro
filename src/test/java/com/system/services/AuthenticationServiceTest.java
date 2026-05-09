@@ -64,4 +64,24 @@ public class AuthenticationServiceTest {
         AuthenticationService auth = new AuthenticationService(true);
         assertEquals(Role.ADMIN, auth.login("admin", "admin123"));
     }
+
+    @Test
+    void testDuplicateAdmin() {
+        AuthenticationService auth = new AuthenticationService(true);
+        auth.registerNewAdmin("admin2", "123");
+        assertFalse(auth.registerNewAdmin("admin2", "123"));
+    }
+
+    @Test
+    void testLoginWrongPassword() {
+        AuthenticationService auth = new AuthenticationService(true);
+        auth.registerNewUser("user", "1234", "t@test.com");
+        assertEquals(Role.NONE, auth.login("user", "wrong"));
+    }
+
+    @Test
+    void testLoginAdminWrongPassword() {
+        AuthenticationService auth = new AuthenticationService(true);
+        assertEquals(Role.NONE, auth.login("admin", "wrong"));
+    }
 }

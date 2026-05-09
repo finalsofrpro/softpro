@@ -74,4 +74,37 @@ public class AppointmentRepositoryTest {
         AppointmentRepository repo = new AppointmentRepository();
         repo.deleteAppointment(999); // ما لازم يكسر
     }
+
+    @Test
+    void testGetAvailableAppointments() {
+        AppointmentRepository repo = new AppointmentRepository();
+        repo.addAppointment(new Appointment(1, LocalDateTime.now(), 30));
+
+        assertFalse(repo.getAvailableAppointments().isEmpty());
+    }
+
+    @Test
+    void testMultipleAppointmentsNoConflict() {
+        AppointmentRepository repo = new AppointmentRepository();
+
+        LocalDateTime time = LocalDateTime.now();
+        repo.addAppointment(new Appointment(10, time, 30));
+        repo.addAppointment(new Appointment(11, time.plusHours(1), 30));
+
+        assertEquals(2, repo.getAvailableAppointments().size());
+    }
+
+    @Test
+    void testConflictMessage() {
+        AppointmentRepository repo = new AppointmentRepository();
+
+        LocalDateTime time = LocalDateTime.now();
+        repo.addAppointment(new Appointment(50, time, 30));
+
+        Exception ex = assertThrows(IllegalArgumentException.class, () ->
+                repo.addAppointment(new Appointment(51, time.plusMinutes(10), 30))
+        );
+
+        assertTrue(ex.getMessage().contains("Time Conflict"));
+    }
 }
