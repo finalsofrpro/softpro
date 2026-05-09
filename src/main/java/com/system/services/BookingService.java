@@ -69,20 +69,27 @@ public class BookingService {
      * @return true if the booking was successful, false if it failed validation.
      */
     public boolean book(Appointment appointment, String userEmail) {
+
+        // 🔥 أضيفي هاد الشرط هون
+        if (!appointment.getStatus().equals("AVAILABLE")) {
+            return false;
+        }
+
         if (strategy.isValid(appointment)) {
             appointment.setStatus("BOOKED");
             appointment.setBookedBy(userEmail);
             repository.saveToFile();
 
-            String content = "Your booking is confirmed!\n" +
-                    "Details:\n" +
-                    "- Type: " + appointment.getType() + "\n" +
-                    "- Time: " + appointment.getDateTime().toString().replace("T", " ") + "\n" +
-                    "- Duration: " + appointment.getDurationMinutes() + " minutes.";
+            String content = "Your booking is confirmed!\n"
+                    + "Details:\n"
+                    + "- Type: " + appointment.getType() + "\n"
+                    + "- Time: " + appointment.getDateTime().toString().replace("T", " ") + "\n"
+                    + "- Duration: " + appointment.getDurationMinutes() + " minutes.";
 
             notifyObservers(userEmail, content);
             return true;
         }
+
         return false;
     }
 
