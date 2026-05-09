@@ -1,25 +1,34 @@
 package com.system.services;
 
+import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import org.junit.jupiter.api.Test;
+import static org.mockito.Mockito.*;
 
 public class EmailServiceTest {
 
     @Test
     void testUpdateDoesNotCrash() {
         EmailService emailService = new EmailService();
-        emailService.update("test@test.com", "hello");
+        assertDoesNotThrow(() ->
+                emailService.update("test@test.com", "hello")
+        );
     }
 
     @Test
     void testSendEmailDoesNotCrash() {
         EmailService emailService = new EmailService();
-        emailService.sendEmail("test@test.com", "hello");
+        assertDoesNotThrow(() ->
+                emailService.sendEmail("test@test.com", "hello")
+        );
     }
 
     @Test
     void testUpdateMultipleTimes() {
         EmailService emailService = new EmailService();
-        emailService.update("a@test.com", "msg1");
-        emailService.update("b@test.com", "msg2");
+
+        assertDoesNotThrow(() -> {
+            emailService.update("a@test.com", "msg1");
+            emailService.update("b@test.com", "msg2");
+        });
     }
 }
