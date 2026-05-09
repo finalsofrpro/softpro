@@ -1,4 +1,4 @@
-// شلنا سطر الـ package عشان الملف موجود مباشرة تحت مجلد java في الـ test
+package com.system.services;// شلنا سطر الـ package عشان الملف موجود مباشرة تحت مجلد java في الـ test
 import static org.mockito.Mockito.*;
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -119,5 +119,18 @@ public class BookingServiceTest {
         bookingService.book(app, "raghad@test.com");
 
         verify(mockObserver, times(1)).update(anyString(), anyString());
+    }
+
+    @Test
+    void testBookingFailsWhenStrategyRejects() {
+        BookingStrategy mockStrategy = mock(BookingStrategy.class);
+        when(mockStrategy.isValid(any())).thenReturn(false);
+
+        bookingService = new BookingService(mockRepo, mockStrategy);
+
+        Appointment app = new Appointment(400, LocalDateTime.now(), 15, 1, "Urgent");
+        app.setStatus("AVAILABLE");
+
+        assertFalse(bookingService.book(app, "test@test.com"));
     }
 }

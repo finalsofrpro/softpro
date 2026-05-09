@@ -37,7 +37,6 @@ public class Main {
         repo.loadFromFile();
 
         // 2. CRITICAL: Register the EmailService as an observer to enable email notifications
-        // هذا السطر هو المسؤول عن تفعيل إرسال الإيميلات عند الحجز أو الإلغاء
         bookingService.addObserver(new EmailService());
 
         // 3. Set the system look and feel for the GUI

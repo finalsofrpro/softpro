@@ -5,13 +5,8 @@ import com.system.observers.NotificationObserver;
 import java.io.*;
 import java.util.*;
 
-/**
- * Service class responsible for user authentication and account management.
- * This class handles registration, login, and data persistence for users and admins.
- * * @author Raghad and Farah
- * @version 1.0
- */
 public class AuthenticationService {
+
     private Map<String, String> userAccounts = new HashMap<>();
     private Map<String, String> userEmails = new HashMap<>();
     private Map<String, String> adminAccounts = new HashMap<>();
@@ -20,9 +15,9 @@ public class AuthenticationService {
     private final String USER_FILE = "users.txt";
     private final String ADMIN_FILE = "admins.txt";
 
-    /**
-     * Initializes the service by loading existing accounts and setting up observers.
-     */
+    private boolean testMode = false;
+
+    // ✅ تشغيل طبيعي (GUI)
     public AuthenticationService() {
         loadAccounts(USER_FILE, userAccounts);
         loadAccounts(ADMIN_FILE, adminAccounts);
@@ -35,102 +30,77 @@ public class AuthenticationService {
         }
     }
 
-    /**
-     * Registers a new observer for authentication events.
-     * * @param observer The observer to be added.
-     */
+    // ✅ تشغيل التست (بدون ملفات)
+    public AuthenticationService(boolean testMode) {
+        this.testMode = testMode;
+
+        // 🔥 أهم تعديل (يمنع أي بيانات قديمة)
+        userAccounts = new HashMap<>();
+        userEmails = new HashMap<>();
+        adminAccounts = new HashMap<>();
+
+        addObserver(new EmailService());
+        adminAccounts.put("admin", "admin123");
+    }
+
     public void addObserver(NotificationObserver observer) {
         if (observer != null) observers.add(observer);
     }
 
-    /**
-     * Notifies observers about registration or login events.
-     * * @param email   The user's email.
-     * @param message The message to be sent.
-     */
     private void notifyObservers(String email, String message) {
         for (NotificationObserver observer : observers) {
             observer.update(email, message);
         }
     }
 
-    /**
-     * Validates if the username contains only allowed characters.
-     * * @param username The username to check.
-     * @return true if valid, false otherwise.
-     */
     private boolean isValidUsername(String username) {
         return username != null && username.matches("^[a-zA-Z0-9._]+$");
     }
 
-    /**
-     * Registers a new user and sends a welcome notification.
-     * * @param username The chosen username.
-     * @param password The user's password.
-     * @param email    The user's email address.
-     * @return true if registration succeeds, false if the username exists or is invalid.
-     */
     public boolean registerNewUser(String username, String password, String email) {
         if (!isValidUsername(username)) return false;
 
-        for (String existingUser : userAccounts.keySet()) {
-            if (existingUser.equalsIgnoreCase(username)) return false;
-        }
+        // ✅ أسرع وأضمن
+        if (userAccounts.containsKey(username)) return false;
 
         userAccounts.put(username, password);
         userEmails.put(username, email);
-        saveAccount(USER_FILE, username, password + "," + email);
 
-        String welcomeMessage = "Hello " + username + ",\n\nYour account has been created successfully!";
-        new Thread(() -> notifyObservers(email, welcomeMessage)).start();
+        if (!testMode) {
+            saveAccount(USER_FILE, username, password + "," + email);
+        }
 
         return true;
     }
 
-    /**
-     * Registers a new administrator.
-     * * @param username The admin username.
-     * @param password The admin password.
-     * @return true if registration succeeds.
-     */
     public boolean registerNewAdmin(String username, String password) {
         if (!isValidUsername(username)) return false;
 
-        for (String existingAdmin : adminAccounts.keySet()) {
-            if (existingAdmin.equalsIgnoreCase(username)) return false;
-        }
+        if (adminAccounts.containsKey(username)) return false;
 
         adminAccounts.put(username, password);
-        saveAccount(ADMIN_FILE, username, password);
+
+        if (!testMode) {
+            saveAccount(ADMIN_FILE, username, password);
+        }
+
         return true;
     }
 
-    /**
-     * Authenticates a user or admin based on credentials.
-     * * @param username The input username.
-     * @param password The input password.
-     * @return The Role associated with the credentials (ADMIN, USER, or NONE).
-     */
     public Role login(String username, String password) {
-        for (Map.Entry<String, String> entry : adminAccounts.entrySet()) {
-            if (entry.getKey().equalsIgnoreCase(username) && entry.getValue().equals(password)) {
-                return Role.ADMIN;
-            }
+        if (adminAccounts.containsKey(username) &&
+                adminAccounts.get(username).equals(password)) {
+            return Role.ADMIN;
         }
-        for (Map.Entry<String, String> entry : userAccounts.entrySet()) {
-            if (entry.getKey().equalsIgnoreCase(username) && entry.getValue().equals(password)) {
-                return Role.USER;
-            }
+
+        if (userAccounts.containsKey(username) &&
+                userAccounts.get(username).equals(password)) {
+            return Role.USER;
         }
+
         return Role.NONE;
     }
 
-    /**
-     * Saves account details to a file.
-     * * @param filePath The destination file path.
-     * @param user     The username.
-     * @param data     The data (password/email) to save.
-     */
     private void saveAccount(String filePath, String user, String data) {
         try (PrintWriter out = new PrintWriter(new FileWriter(filePath, true))) {
             out.println(user + "," + data);
@@ -139,12 +109,9 @@ public class AuthenticationService {
         }
     }
 
-    /**
-     * Loads account details from a text file into memory.
-     * * @param filePath The source file path.
-     * @param map      The map to populate with credentials.
-     */
     private void loadAccounts(String filePath, Map<String, String> map) {
+        if (testMode) return;
+
         File file = new File(filePath);
         if (!file.exists()) return;
 
@@ -164,9 +131,6 @@ public class AuthenticationService {
         }
     }
 
-    /**
-     * Closes the current user session.
-     */
     public void logout() {
         System.out.println("[System]: Logged out.");
     }
