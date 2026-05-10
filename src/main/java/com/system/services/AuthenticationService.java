@@ -2,7 +2,6 @@ package com.system.services;
 
 import com.system.models.Role;
 import com.system.observers.NotificationObserver;
-
 import java.io.*;
 import java.util.*;
 
@@ -22,26 +21,24 @@ public class AuthenticationService {
 
     private boolean testMode = false;
 
-    // ✅ تشغيل طبيعي
+    // ✅ تشغيل طبيعي (يقرأ الملفات عند البدء)
     public AuthenticationService() {
         loadAccounts(USER_FILE, userAccounts);
         loadAccounts(ADMIN_FILE, adminAccounts);
-
         initializeDefaultAdmin();
     }
 
+    // ✅ مشغل للتست مع Observer
     public AuthenticationService(NotificationObserver observer) {
         this.testMode = true;
         initEmptyMaps();
-
         if (observer != null) {
             addObserver(observer);
         }
-
         initializeDefaultAdmin();
     }
 
-    // ✅ للتست
+    // ✅ مشغل للتست العام
     public AuthenticationService(boolean testMode) {
         this.testMode = testMode;
         initEmptyMaps();
@@ -55,7 +52,7 @@ public class AuthenticationService {
     }
 
     private void initializeDefaultAdmin() {
-        if (adminAccounts.isEmpty()) {
+        if (!adminAccounts.containsKey(DEFAULT_ADMIN)) {
             adminAccounts.put(DEFAULT_ADMIN, DEFAULT_ADMIN_PASS);
             if (!testMode) {
                 saveAccount(ADMIN_FILE, DEFAULT_ADMIN, DEFAULT_ADMIN_PASS);
@@ -86,6 +83,7 @@ public class AuthenticationService {
         notifyObservers(email, "Welcome " + username);
 
         if (!testMode) {
+            // يتم الحفظ بتنسيق: username,password,email
             saveAccount(USER_FILE, username, password + "," + email);
         }
 
@@ -104,25 +102,26 @@ public class AuthenticationService {
         return true;
     }
 
-    // ✅ حل التكرار
     private boolean isValidNewUser(String username, Map<String, String> map) {
         return isValidUsername(username) && !map.containsKey(username);
     }
 
     public Role login(String username, String password) {
+        // استخدام trim() للتخلص من أي مسافات زائدة قد تسبب فشل اللوجن
+        String u = (username != null) ? username.trim() : "";
+        String p = (password != null) ? password.trim() : "";
 
-        if (isValidLogin(adminAccounts, username, password)) {
+        if (isValidLogin(adminAccounts, u, p)) {
             return Role.ADMIN;
         }
 
-        if (isValidLogin(userAccounts, username, password)) {
+        if (isValidLogin(userAccounts, u, p)) {
             return Role.USER;
         }
 
         return Role.NONE;
     }
 
-    // ✅ تقليل التكرار
     private boolean isValidLogin(Map<String, String> map, String username, String password) {
         return map.containsKey(username) && map.get(username).equals(password);
     }
@@ -131,7 +130,7 @@ public class AuthenticationService {
         try (PrintWriter out = new PrintWriter(new FileWriter(filePath, true))) {
             out.println(user + "," + data);
         } catch (IOException e) {
-            System.err.println("Error saving: " + e.getMessage());
+            System.err.println("Error saving to " + filePath + ": " + e.getMessage());
         }
     }
 
@@ -143,25 +142,27 @@ public class AuthenticationService {
 
         try (BufferedReader br = new BufferedReader(new FileReader(file))) {
             String line;
-
             while ((line = br.readLine()) != null) {
+                if (line.trim().isEmpty()) continue;
                 processLine(filePath, map, line);
             }
-
         } catch (IOException e) {
             System.err.println("Error loading: " + filePath);
         }
     }
 
-    // ✅ Extract Method
     private void processLine(String filePath, Map<String, String> map, String line) {
         String[] parts = line.split(",");
 
         if (parts.length >= 2) {
-            map.put(parts[0], parts[1]);
+            String username = parts[0].trim();
+            String password = parts[1].trim();
 
-            if (filePath.equals(USER_FILE) && parts.length == 3) {
-                userEmails.put(parts[0], parts[2]);
+            map.put(username, password);
+
+            // إذا كان ملف يوزرز وفيه إيميل (الخيار الثالث)
+            if (filePath.equals(USER_FILE) && parts.length >= 3) {
+                userEmails.put(username, parts[2].trim());
             }
         }
     }
