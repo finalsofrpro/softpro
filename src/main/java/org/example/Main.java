@@ -18,7 +18,7 @@ import javax.swing.UIManager;
 public class Main {
 
     /** Global repository for appointment data management. */
-    public static AppointmentRepository repo = new AppointmentRepository();
+    public static final AppointmentRepository repo = new AppointmentRepository();
 
     /** Global service for user authentication and account management. */
     public static AuthenticationService authService = new AuthenticationService();

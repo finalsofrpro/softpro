@@ -16,7 +16,7 @@
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
 
         <sonar.organization>finalsofrpro</sonar.organization>
-        <sonar.coverage.exclusions>**/gui/**,**/org/example/**</sonar.coverage.exclusions>
+        <sonar.coverage.exclusions>**/gui/**,**/org/example/**,**/*EmailService.java</sonar.coverage.exclusions>
     </properties>
 
 

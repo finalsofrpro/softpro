@@ -6,19 +6,21 @@ import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.logging.Logger;
+
 
 public class AppointmentRepository {
+
+    private static final Logger LOGGER = Logger.getLogger(AppointmentRepository.class.getName());
     private List<Appointment> appointments = new ArrayList<>();
-    private final String FILE_NAME = "appointments.txt";
+    private final String fileName = "appointments.txt";
     private final DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm");
     private boolean useFile;
 
-    // ✅ Constructor للتست (بدون ملف)
     public AppointmentRepository() {
         this.useFile = false;
     }
 
-    // ✅ Constructor للتشغيل الحقيقي
     public AppointmentRepository(boolean useFile) {
         this.useFile = useFile;
         if (useFile) {
@@ -58,7 +60,7 @@ public class AppointmentRepository {
     }
 
     public void saveToFile() {
-        try (PrintWriter out = new PrintWriter(new FileWriter(FILE_NAME))) {
+        try (PrintWriter out = new PrintWriter(new FileWriter(fileName))) {
             for (Appointment app : appointments) {
                 out.println(app.getId() + "|" + app.getDateTime() + "|" +
                         app.getDurationMinutes() + "|" + app.getStatus() + "|" +
@@ -71,7 +73,7 @@ public class AppointmentRepository {
 
     public void loadFromFile() {
         appointments.clear();
-        File file = new File(FILE_NAME);
+        File file = new File(fileName);
         if (!file.exists()) return;
 
         try (BufferedReader br = new BufferedReader(new FileReader(file))) {
@@ -92,8 +94,8 @@ public class AppointmentRepository {
                     appointments.add(app);
                 }
             }
-        } catch (Exception e) {
-            System.err.println("Error loading: " + e.getMessage());
+        }catch(Exception e){
+            LOGGER.severe("Error loading: " + e.getMessage());
         }
     }
 }

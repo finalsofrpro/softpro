@@ -1,0 +1,136 @@
+@startuml
+
+package "models" {
+  class Appointment {
+    - int id
+    - LocalDateTime dateTime
+    - int durationMinutes
+    - String status
+    - int maxParticipants
+    - String type
+    - String bookedBy
+    + getId()
+    + getDateTime()
+    + getDurationMinutes()
+    + getStatus()
+    + setStatus()
+    + getMaxParticipants()
+    + setMaxParticipants()
+    + getType()
+    + setType()
+    + getBookedBy()
+    + setBookedBy()
+  }
+
+  enum Role {
+    ADMIN
+    USER
+    NONE
+  }
+
+  class User {
+    - String username
+    - String password
+    - String role
+    + getUsername()
+    + getPassword()
+    + getRole()
+  }
+}
+
+package "repository" {
+  class AppointmentRepository {
+    - List<Appointment> appointments
+    - String FILE_NAME
+    - boolean useFile
+    + addAppointment()
+    + deleteAppointment()
+    + getAvailableAppointments()
+    + saveToFile()
+    + loadFromFile()
+  }
+}
+
+package "observers" {
+  interface NotificationObserver {
+    + update(String recipient, String message)
+  }
+}
+
+package "services" {
+  class AuthenticationService {
+    - Map userAccounts
+    - Map userEmails
+    - Map adminAccounts
+    - List<NotificationObserver> observers
+    + registerNewUser()
+    + registerNewAdmin()
+    + login()
+    + logout()
+    + addObserver()
+  }
+
+  class BookingService {
+    - AppointmentRepository repository
+    - BookingStrategy strategy
+    - List<NotificationObserver> observers
+    + book()
+    + cancel()
+    + setStrategy()
+    + addObserver()
+  }
+
+  class EmailService {
+    + sendEmail()
+  }
+}
+
+package "strategies" {
+  interface BookingStrategy {
+    + isValid(Appointment)
+  }
+
+  class FollowUpStrategy
+  class RangeDurationStrategy
+  class ShortDurationStrategy
+  class UrgentStrategy
+  class VirtualStrategy
+
+  BookingStrategy <|.. FollowUpStrategy
+  BookingStrategy <|.. RangeDurationStrategy
+  BookingStrategy <|.. ShortDurationStrategy
+  BookingStrategy <|.. UrgentStrategy
+  BookingStrategy <|.. VirtualStrategy
+}
+
+package "gui" {
+  class ModernLoginFrame
+  class UserDashboard
+  class AdminDashboardFrame
+  class SignUpFrame
+}
+
+' الربط مع الخدمات
+ModernLoginFrame --> AuthenticationService
+SignUpFrame --> AuthenticationService
+
+UserDashboard --> BookingService
+UserDashboard --> AppointmentRepository
+
+AdminDashboardFrame --> AppointmentRepository
+AdminDashboardFrame --> AuthenticationService
+AdminDashboardFrame --> EmailService
+
+' ربط مع الموديل
+UserDashboard --> Appointment
+AdminDashboardFrame --> Appointment
+
+' العلاقات
+BookingService --> AppointmentRepository
+BookingService --> BookingStrategy
+BookingService --> NotificationObserver
+AuthenticationService --> NotificationObserver
+EmailService ..|> NotificationObserver
+AppointmentRepository --> Appointment
+
+@enduml

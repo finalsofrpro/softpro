@@ -19,7 +19,7 @@ import java.time.format.DateTimeFormatter;
  */
 public class AdminDashboardFrame extends JFrame {
     private final Color TURQUOISE_COLOR = new Color(0, 188, 212);
-    private AuthenticationService authService = Main.authService;
+    private transient AuthenticationService authService = Main.authService;
     private AppointmentRepository appointmentRepo = new AppointmentRepository();
     private JPanel contentPanel;
     private String currentSubMode = "ADD";

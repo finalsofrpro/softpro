@@ -28,9 +28,9 @@ public class AppointmentRepositoryTest {
 
         repo.addAppointment(new Appointment(202, time, 30));
 
-        assertThrows(IllegalArgumentException.class, () ->
-                repo.addAppointment(new Appointment(203, time.plusMinutes(10), 30))
-        );
+        Appointment app = new Appointment(203, time.plusMinutes(10), 30);
+
+        assertThrows(IllegalArgumentException.class, () -> repo.addAppointment(app));
     }
 
     @Test
