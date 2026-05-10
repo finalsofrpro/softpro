@@ -7,35 +7,28 @@ import java.util.Properties;
 
 /**
  * Service responsible for sending real-time email notifications to users.
- * This class implements the {@link NotificationObserver} interface as part of the Observer Pattern (US3.1).
- * It ensures the system can send reminders and confirmation updates asynchronously.
- * * @author Raghad and Farah
- * @version 1.0
+ * Implements Observer Pattern.
  */
 public class EmailService implements NotificationObserver {
 
     private static final String MY_EMAIL = "raghdmansour91@gmail.com";
-    /** App-specific password for secure SMTP authentication. */
-    private static final String APP_PASSWORD = "ebnoqizmsthoewjq";
 
-    /**
-     * Receives updates from the subject and triggers the email sending process.
-     * To maintain system responsiveness (non-blocking), it executes the email logic in a separate thread.
-     * * @param recipient The email address of the user to receive the notification.
-     * @param message   The content/body of the notification.
-     */
+    // ✅ بدل الهاردكود — ناخدها من Environment Variable
+    private static final String APP_PASSWORD = System.getenv("APP_PASSWORD");
+
     @Override
     public void update(String recipient, String message) {
-        // Run in a separate thread to prevent GUI/Service freezing
+        // Thread منفصل عشان ما يعلق السيستم
         new Thread(() -> sendEmail(recipient, message)).start();
     }
 
-    /**
-     * Configures the SMTP server and handles the low-level JavaMail transmission.
-     * * @param recipientEmail The target user's email address.
-     * @param content        The plain text content of the email.
-     */
     public void sendEmail(String recipientEmail, String content) {
+
+        // 🔒 تحقق أمان
+        if (APP_PASSWORD == null || APP_PASSWORD.isEmpty()) {
+            throw new IllegalStateException("APP_PASSWORD environment variable is not set!");
+        }
+
         Properties props = new Properties();
         props.put("mail.smtp.auth", "true");
         props.put("mail.smtp.starttls.enable", "true");
@@ -52,16 +45,18 @@ public class EmailService implements NotificationObserver {
         });
 
         try {
-            Message message = new MimeMessage(session);
-            message.setFrom(new InternetAddress(MY_EMAIL));
-            message.setRecipients(Message.RecipientType.TO, InternetAddress.parse(recipientEmail));
-            message.setSubject("System Notification - Appointment Update");
-            message.setText(content);
+            Message msg = new MimeMessage(session);
+            msg.setFrom(new InternetAddress(MY_EMAIL));
+            msg.setRecipients(Message.RecipientType.TO, InternetAddress.parse(recipientEmail));
+            msg.setSubject("System Notification - Appointment Update");
+            msg.setText(content);
 
-            Transport.send(message);
-            System.out.println("✅ DONE! Email successfully sent to: " + recipientEmail);
+            Transport.send(msg);
+
+            System.out.println("✅ Email sent to: " + recipientEmail);
+
         } catch (MessagingException e) {
-            System.err.println("❌ Error: Failed to send email to " + recipientEmail);
+            System.err.println("❌ Failed to send email to " + recipientEmail);
             e.printStackTrace();
         }
     }

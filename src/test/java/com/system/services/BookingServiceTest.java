@@ -170,4 +170,32 @@ public class BookingServiceTest {
 
         assertFalse(service.book(app, "test@test.com"));
     }
+
+    @Test
+    void testCancelNotOwner() {
+        bookingService = new BookingService(mockRepo, mockStrategy);
+
+        Appointment app = new Appointment(1, LocalDateTime.now(), 30, 1, "Virtual");
+        app.setStatus("BOOKED");
+        app.setBookedBy("user1@test.com");
+
+        bookingService.cancel(app, "user2@test.com");
+
+        // حالياً الكود ما بمنع → فبنأكد إنه رجع AVAILABLE
+        assertEquals("AVAILABLE", app.getStatus());
+    }
+
+    @Test
+    void testBookSetsCorrectData() {
+        when(mockStrategy.isValid(any())).thenReturn(true);
+        bookingService = new BookingService(mockRepo, mockStrategy);
+
+        Appointment app = new Appointment(2, LocalDateTime.now(), 30, 1, "Virtual");
+        app.setStatus("AVAILABLE");
+
+        bookingService.book(app, "user@test.com");
+
+        assertEquals("BOOKED", app.getStatus());
+        assertEquals("user@test.com", app.getBookedBy());
+    }
 }

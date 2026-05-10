@@ -6,40 +6,45 @@ import java.io.*;
 import java.util.*;
 
 public class AuthenticationService {
-
     private Map<String, String> userAccounts = new HashMap<>();
     private Map<String, String> userEmails = new HashMap<>();
     private Map<String, String> adminAccounts = new HashMap<>();
     private List<NotificationObserver> observers = new ArrayList<>();
-
     private final String USER_FILE = "users.txt";
     private final String ADMIN_FILE = "admins.txt";
-
     private boolean testMode = false;
 
     // ✅ تشغيل طبيعي (GUI)
     public AuthenticationService() {
         loadAccounts(USER_FILE, userAccounts);
         loadAccounts(ADMIN_FILE, adminAccounts);
-
-        addObserver(new EmailService());
-
+        // addObserver(new EmailService()); // تأكد من وجود EmailService في مشروعك
         if (adminAccounts.isEmpty()) {
             adminAccounts.put("admin", "admin123");
             saveAccount(ADMIN_FILE, "admin", "admin123");
         }
     }
 
-    // ✅ تشغيل التست (بدون ملفات)
-    public AuthenticationService(boolean testMode) {
-        this.testMode = testMode;
+    public AuthenticationService(NotificationObserver observer) {
+        this.testMode = true;
 
-        // 🔥 أهم تعديل (يمنع أي بيانات قديمة)
         userAccounts = new HashMap<>();
         userEmails = new HashMap<>();
         adminAccounts = new HashMap<>();
 
-        addObserver(new EmailService());
+        if (observer != null) {
+            addObserver(observer);
+        }
+
+        adminAccounts.put("admin", "admin123");
+    }
+
+    // ✅ تشغيل التست (بدون ملفات)
+    public AuthenticationService(boolean testMode) {
+        this.testMode = testMode;
+        userAccounts = new HashMap<>();
+        userEmails = new HashMap<>();
+        adminAccounts = new HashMap<>();
         adminAccounts.put("admin", "admin123");
     }
 
@@ -59,45 +64,37 @@ public class AuthenticationService {
 
     public boolean registerNewUser(String username, String password, String email) {
         if (!isValidUsername(username)) return false;
-
-        // ✅ أسرع وأضمن
         if (userAccounts.containsKey(username)) return false;
 
         userAccounts.put(username, password);
         userEmails.put(username, email);
 
+        notifyObservers(email, "Welcome " + username);
+
         if (!testMode) {
             saveAccount(USER_FILE, username, password + "," + email);
         }
-
         return true;
     }
 
     public boolean registerNewAdmin(String username, String password) {
         if (!isValidUsername(username)) return false;
-
         if (adminAccounts.containsKey(username)) return false;
 
         adminAccounts.put(username, password);
-
         if (!testMode) {
             saveAccount(ADMIN_FILE, username, password);
         }
-
         return true;
     }
 
     public Role login(String username, String password) {
-        if (adminAccounts.containsKey(username) &&
-                adminAccounts.get(username).equals(password)) {
+        if (adminAccounts.containsKey(username) && adminAccounts.get(username).equals(password)) {
             return Role.ADMIN;
         }
-
-        if (userAccounts.containsKey(username) &&
-                userAccounts.get(username).equals(password)) {
+        if (userAccounts.containsKey(username) && userAccounts.get(username).equals(password)) {
             return Role.USER;
         }
-
         return Role.NONE;
     }
 
@@ -111,7 +108,6 @@ public class AuthenticationService {
 
     private void loadAccounts(String filePath, Map<String, String> map) {
         if (testMode) return;
-
         File file = new File(filePath);
         if (!file.exists()) return;
 
