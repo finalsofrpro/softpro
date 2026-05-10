@@ -5,27 +5,26 @@ import javax.mail.*;
 import javax.mail.internet.*;
 import java.util.Properties;
 
-/**
- * Service responsible for sending real-time email notifications to users.
- * Implements Observer Pattern.
- */
 public class EmailService implements NotificationObserver {
 
     private static final String MY_EMAIL = "raghdmansour91@gmail.com";
 
-    // ✅ بدل الهاردكود — ناخدها من Environment Variable
-    private static final String APP_PASSWORD = System.getenv("APP_PASSWORD");
+    // ❗ بدل static final → method عشان التست يقدر يتحكم
+    protected String getAppPassword() {
+        return System.getenv("APP_PASSWORD");
+    }
 
     @Override
     public void update(String recipient, String message) {
-        // Thread منفصل عشان ما يعلق السيستم
         new Thread(() -> sendEmail(recipient, message)).start();
     }
 
     public void sendEmail(String recipientEmail, String content) {
 
-        // 🔒 تحقق أمان
-        if (APP_PASSWORD == null || APP_PASSWORD.isEmpty()) {
+        String password = getAppPassword();
+
+        // 🔒 security check (ما تغير)
+        if (password == null || password.isEmpty()) {
             throw new IllegalStateException("APP_PASSWORD environment variable is not set!");
         }
 
@@ -40,7 +39,7 @@ public class EmailService implements NotificationObserver {
         Session session = Session.getInstance(props, new Authenticator() {
             @Override
             protected PasswordAuthentication getPasswordAuthentication() {
-                return new PasswordAuthentication(MY_EMAIL, APP_PASSWORD);
+                return new PasswordAuthentication(MY_EMAIL, password);
             }
         });
 
