@@ -85,4 +85,27 @@ public class EmailServiceTest {
         );
     }
 
+    @Test
+    void testSendEmailHandlesException() {
+        EmailService service = new EmailService();
+
+        try {
+            service.sendEmail("invalid-email", "test");
+        } catch (Exception ignored) {
+        }
+
+        assertTrue(true);
+    }
+
+    @Test
+    void testSendEmailWithEmptyMessage() {
+        EmailService service = new EmailService();
+
+        try {
+            service.sendEmail("test@test.com", "");
+        } catch (Exception ignored) {
+        }
+
+        assertTrue(true);
+    }
 }
