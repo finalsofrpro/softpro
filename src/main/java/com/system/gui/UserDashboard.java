@@ -8,8 +8,16 @@ import javax.swing.table.DefaultTableCellRenderer;
 import javax.swing.table.DefaultTableModel;
 import java.awt.*;
 import java.time.format.DateTimeFormatter;
-
+import java.util.logging.Level;
+import java.util.logging.Logger;
+/**
+ * User Dashboard interface for managing personal appointments.
+ * Features include visual status indicators (Green/Red), filtering, and booking actions.
+ * * @author Raghad and Farah
+ * @version 1.0
+ */
 public class UserDashboard extends JFrame {
+    private static final Logger LOGGER = Logger.getLogger(UserDashboard.class.getName());
     private final Color TURQUOISE_COLOR = new Color(0, 188, 212);
     private JTable appointmentTable;
     private DefaultTableModel tableModel;
@@ -19,9 +27,7 @@ public class UserDashboard extends JFrame {
     private boolean showOnlyMyBookings = false;
 
     public UserDashboard(String username) {
-        // تحديث البيانات من الملف فور فتح الشاشة
         Main.repo.loadFromFile();
-
         this.currentUsername = username.trim();
         setTitle("User Dashboard - " + username);
         setSize(950, 650);
@@ -104,13 +110,12 @@ public class UserDashboard extends JFrame {
     }
 
     private void refreshTableData() {
-        // قراءة التحديثات قبل عرض الجدول لضمان ظهور أي تعديل من الأدمن
         Main.repo.loadFromFile();
         tableModel.setRowCount(0);
         String filter = (String) durationFilter.getSelectedItem();
 
         for (Appointment app : Main.repo.getAvailableAppointments()) {
-            boolean durMatch = filter.equals("All") || String.valueOf(app.getDurationMinutes()).equals(filter);
+            boolean durMatch = "All".equals(filter) || String.valueOf(app.getDurationMinutes()).equals(filter);
             if (durMatch) addRow(app);
         }
     }
@@ -129,6 +134,8 @@ public class UserDashboard extends JFrame {
             if (Main.bookingService.book(selected, currentUsername + "@gmail.com")) {
                 JOptionPane.showMessageDialog(this, "Booking Successful!");
                 refreshTableData();
+            } else {
+                JOptionPane.showMessageDialog(this, "Booking Failed: This type has special rules (e.g., Urgent max 15 mins).");
             }
         }
     }
