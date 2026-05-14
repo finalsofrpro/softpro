@@ -84,13 +84,20 @@ public class AuthenticationService {
     }
 
     public boolean registerNewUser(String username, String password, String email) {
+
+        if (username == null) return false;
+
+        username = username.trim(); // ✅ التعديل الوحيد المهم
+
         if (!isValidNewUser(username, userAccounts)) return false;
 
         userAccounts.put(username, password);
         userEmails.put(username, email);
 
-        // ✅ إرسال إيميل ترحيبي فوراً عند التسجيل
-        notifyObservers(email, "Welcome " + username + "! Your account has been created successfully in our Appointment System.");
+        // ✅ إرسال إيميل ترحيبي
+        notifyObservers(email,
+                "Welcome " + username + "! Your account has been created successfully in our Appointment System."
+        );
 
         if (!testMode) {
             saveAccount(USER_FILE, username, password + "," + email);
