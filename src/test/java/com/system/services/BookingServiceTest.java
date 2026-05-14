@@ -17,6 +17,7 @@ import com.system.strategies.FollowUpStrategy;
 import com.system.strategies.VirtualStrategy;
 import com.system.observers.NotificationObserver;
 import java.time.LocalDateTime;
+import java.util.List;
 
 /**
  * Final Test File - Direct in java test folder.
@@ -197,5 +198,32 @@ public class BookingServiceTest {
 
         assertEquals("BOOKED", app.getStatus());
         assertEquals("user@test.com", app.getBookedBy());
+    }
+
+    @Test
+    void testGetUserBookings() {
+        AppointmentRepository repo = mock(AppointmentRepository.class);
+        BookingStrategy strategy = mock(BookingStrategy.class);
+
+        BookingService service = new BookingService(repo, strategy);
+
+        Appointment a1 = new Appointment(1, LocalDateTime.now(), 30, 1, "Virtual");
+        a1.setStatus("BOOKED");
+        a1.setBookedBy("user@test.com");
+
+        Appointment a2 = new Appointment(2, LocalDateTime.now(), 30, 1, "Virtual");
+        a2.setStatus("AVAILABLE");
+        a2.setBookedBy("user@test.com");
+
+        Appointment a3 = new Appointment(3, LocalDateTime.now(), 30, 1, "Virtual");
+        a3.setStatus("BOOKED");
+        a3.setBookedBy("other@test.com");
+
+        when(repo.getAllAppointments()).thenReturn(List.of(a1, a2, a3));
+
+        List<Appointment> result = service.getUserBookings("user@test.com");
+
+        assertEquals(1, result.size());
+        assertEquals("user@test.com", result.get(0).getBookedBy());
     }
 }
