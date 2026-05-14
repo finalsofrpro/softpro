@@ -7,14 +7,16 @@ import com.system.strategies.BookingStrategy;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 /**
  * Service class responsible for managing appointment booking and cancellation operations.
  * @author Raghad and Farah
- * @version 1.1
+ * @version 1.2
  */
 public class BookingService {
-
+    private static final Logger LOGGER = Logger.getLogger(BookingService.class.getName());
     private static final String STATUS_AVAILABLE = "AVAILABLE";
     private static final String STATUS_BOOKED = "BOOKED";
     private static final String TYPE_URGENT = "Urgent";
@@ -43,6 +45,7 @@ public class BookingService {
 
         String content = buildCancelMessage(appointment);
         notifyObservers(userEmail, content);
+        LOGGER.log(Level.INFO, "Appointment {0} cancelled for {1}", new Object[]{appointment.getId(), userEmail});
     }
 
     public boolean book(Appointment appointment, String userEmail) {
@@ -50,8 +53,9 @@ public class BookingService {
             return false;
         }
 
-        // ✅ قاعدة إضافية: منع حجز Urgent إذا تجاوز 15 دقيقة
+        // ✅ قاعدة الـ 15 دقيقة
         if (TYPE_URGENT.equalsIgnoreCase(appointment.getType()) && appointment.getDurationMinutes() > 15) {
+            LOGGER.log(Level.WARNING, "Booking failed: Urgent appointment exceeds 15 minutes.");
             return false;
         }
 

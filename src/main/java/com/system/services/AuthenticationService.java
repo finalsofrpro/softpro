@@ -21,14 +21,12 @@ public class AuthenticationService {
 
     private boolean testMode = false;
 
-    // ✅ تشغيل طبيعي (يقرأ الملفات عند البدء)
     public AuthenticationService() {
         loadAccounts(USER_FILE, userAccounts);
         loadAccounts(ADMIN_FILE, adminAccounts);
         initializeDefaultAdmin();
     }
 
-    // ✅ مشغل للتست مع Observer
     public AuthenticationService(NotificationObserver observer) {
         this.testMode = true;
         initEmptyMaps();
@@ -38,7 +36,6 @@ public class AuthenticationService {
         initializeDefaultAdmin();
     }
 
-    // ✅ مشغل للتست العام
     public AuthenticationService(boolean testMode) {
         this.testMode = testMode;
         initEmptyMaps();
@@ -60,8 +57,20 @@ public class AuthenticationService {
         }
     }
 
+    // ميثود جلب الإيميل الحقيقي لليوزر
+    public String getUserEmail(String username) {
+        if (username == null) return "";
+        String email = userEmails.get(username.trim());
+        if (email != null && !email.isEmpty()) {
+            return email;
+        }
+        return username.trim() + "@gmail.com";
+    }
+
     public void addObserver(NotificationObserver observer) {
-        if (observer != null) observers.add(observer);
+        if (observer != null && !observers.contains(observer)) {
+            observers.add(observer);
+        }
     }
 
     private void notifyObservers(String email, String message) {
@@ -80,10 +89,10 @@ public class AuthenticationService {
         userAccounts.put(username, password);
         userEmails.put(username, email);
 
-        notifyObservers(email, "Welcome " + username);
+        // ✅ إرسال إيميل ترحيبي فوراً عند التسجيل
+        notifyObservers(email, "Welcome " + username + "! Your account has been created successfully in our Appointment System.");
 
         if (!testMode) {
-            // يتم الحفظ بتنسيق: username,password,email
             saveAccount(USER_FILE, username, password + "," + email);
         }
 
@@ -107,7 +116,6 @@ public class AuthenticationService {
     }
 
     public Role login(String username, String password) {
-        // استخدام trim() للتخلص من أي مسافات زائدة قد تسبب فشل اللوجن
         String u = (username != null) ? username.trim() : "";
         String p = (password != null) ? password.trim() : "";
 
@@ -144,26 +152,18 @@ public class AuthenticationService {
             String line;
             while ((line = br.readLine()) != null) {
                 if (line.trim().isEmpty()) continue;
-                processLine(filePath, map, line);
+                String[] parts = line.split(",");
+                if (parts.length >= 2) {
+                    String username = parts[0].trim();
+                    String password = parts[1].trim();
+                    map.put(username, password);
+                    if (filePath.equals(USER_FILE) && parts.length >= 3) {
+                        userEmails.put(username, parts[2].trim());
+                    }
+                }
             }
         } catch (IOException e) {
             System.err.println("Error loading: " + filePath);
-        }
-    }
-
-    private void processLine(String filePath, Map<String, String> map, String line) {
-        String[] parts = line.split(",");
-
-        if (parts.length >= 2) {
-            String username = parts[0].trim();
-            String password = parts[1].trim();
-
-            map.put(username, password);
-
-            // إذا كان ملف يوزرز وفيه إيميل (الخيار الثالث)
-            if (filePath.equals(USER_FILE) && parts.length >= 3) {
-                userEmails.put(username, parts[2].trim());
-            }
         }
     }
 

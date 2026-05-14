@@ -1,3 +1,8 @@
 farah,123,s12325248@stu.najah.edu
 farah1,111,s12325248@stu.najah.edu
-raghad,123,s12324959@stu.najah.edu
+
+raghad,111,s12324959@stu.najah.edu
+raghad111,11111,s12324959@stu.najah.edu
+tasneem,123,s12324959@stu.najah.edu
+mama,123,s12324959@stu.najah.edu
+raghaaad,123,s12324959@stu.najah.edu

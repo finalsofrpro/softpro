@@ -8,14 +8,8 @@ import javax.swing.table.DefaultTableCellRenderer;
 import javax.swing.table.DefaultTableModel;
 import java.awt.*;
 import java.time.format.DateTimeFormatter;
-import java.util.logging.Level;
 import java.util.logging.Logger;
-/**
- * User Dashboard interface for managing personal appointments.
- * Features include visual status indicators (Green/Red), filtering, and booking actions.
- * * @author Raghad and Farah
- * @version 1.0
- */
+
 public class UserDashboard extends JFrame {
     private static final Logger LOGGER = Logger.getLogger(UserDashboard.class.getName());
     private final Color TURQUOISE_COLOR = new Color(0, 188, 212);
@@ -35,6 +29,7 @@ public class UserDashboard extends JFrame {
         setLocationRelativeTo(null);
         setLayout(new BorderLayout());
 
+        // Sidebar
         JPanel sidebar = new JPanel();
         sidebar.setBackground(TURQUOISE_COLOR);
         sidebar.setPreferredSize(new Dimension(220, 600));
@@ -52,6 +47,7 @@ public class UserDashboard extends JFrame {
         sidebar.add(allAppsBtn); sidebar.add(myBookingsBtn); sidebar.add(logoutBtn);
         add(sidebar, BorderLayout.WEST);
 
+        // Main Panel
         JPanel mainPanel = new JPanel(new BorderLayout(10, 10));
         mainPanel.setBackground(Color.WHITE);
         mainPanel.setBorder(BorderFactory.createEmptyBorder(20, 20, 20, 20));
@@ -69,26 +65,24 @@ public class UserDashboard extends JFrame {
         appointmentTable = new JTable(tableModel);
         appointmentTable.setRowHeight(35);
 
+        // Render Status Colors
         appointmentTable.getColumnModel().getColumn(4).setCellRenderer(new DefaultTableCellRenderer() {
             @Override
             public Component getTableCellRendererComponent(JTable table, Object value, boolean isSelected, boolean hasFocus, int row, int column) {
                 Component c = super.getTableCellRendererComponent(table, value, isSelected, hasFocus, row, column);
                 String status = (String) value;
-                if ("AVAILABLE".equalsIgnoreCase(status)) {
-                    c.setForeground(new Color(0, 150, 0));
-                } else if ("BOOKED".equalsIgnoreCase(status)) {
-                    c.setForeground(Color.RED);
-                }
+                if ("AVAILABLE".equalsIgnoreCase(status)) c.setForeground(new Color(0, 150, 0));
+                else if ("BOOKED".equalsIgnoreCase(status)) c.setForeground(Color.RED);
                 return c;
             }
         });
 
         mainPanel.add(new JScrollPane(appointmentTable), BorderLayout.CENTER);
 
+        // Actions
         JPanel actionPanel = new JPanel(new GridLayout(1, 2, 10, 0));
         JButton bookBtn = new JButton("Confirm Booking");
         JButton cancelBtn = new JButton("Cancel Booking");
-
         formatBtn(bookBtn); formatBtn(cancelBtn);
 
         bookBtn.addActionListener(e -> handleBooking());
@@ -101,41 +95,19 @@ public class UserDashboard extends JFrame {
         refreshTableData();
     }
 
-    private void formatBtn(JButton b) {
-        b.setForeground(TURQUOISE_COLOR);
-        b.setFont(new Font("Segoe UI", Font.BOLD, 22));
-        b.setBorder(BorderFactory.createLineBorder(TURQUOISE_COLOR, 3));
-        b.setBackground(Color.WHITE);
-        b.setFocusPainted(false);
-    }
-
-    private void refreshTableData() {
-        Main.repo.loadFromFile();
-        tableModel.setRowCount(0);
-        String filter = (String) durationFilter.getSelectedItem();
-
-        for (Appointment app : Main.repo.getAvailableAppointments()) {
-            boolean durMatch = "All".equals(filter) || String.valueOf(app.getDurationMinutes()).equals(filter);
-            if (durMatch) addRow(app);
-        }
-    }
-
-    private void addRow(Appointment app) {
-        tableModel.addRow(new Object[]{app.getId(), app.getDateTime().format(formatter), app.getDurationMinutes(), app.getType(), app.getStatus(), app.getBookedBy()});
-    }
-
     private void handleBooking() {
         int row = appointmentTable.getSelectedRow();
-        if (row == -1) return;
+        if (row == -1) { JOptionPane.showMessageDialog(this, "Select a slot first!"); return; }
         int id = (int) tableModel.getValueAt(row, 0);
         Appointment selected = Main.repo.getAvailableAppointments().stream().filter(a -> a.getId() == id).findFirst().orElse(null);
 
         if (selected != null && "AVAILABLE".equalsIgnoreCase(selected.getStatus())) {
-            if (Main.bookingService.book(selected, currentUsername + "@gmail.com")) {
-                JOptionPane.showMessageDialog(this, "Booking Successful!");
+            String realEmail = Main.authService.getUserEmail(currentUsername);
+            if (Main.bookingService.book(selected, realEmail)) {
+                JOptionPane.showMessageDialog(this, "Booking Successful! Notification sent to: " + realEmail);
                 refreshTableData();
             } else {
-                JOptionPane.showMessageDialog(this, "Booking Failed: This type has special rules (e.g., Urgent max 15 mins).");
+                JOptionPane.showMessageDialog(this, "Booking Failed.");
             }
         }
     }
@@ -147,10 +119,42 @@ public class UserDashboard extends JFrame {
         Appointment selected = Main.repo.getAvailableAppointments().stream().filter(a -> a.getId() == id).findFirst().orElse(null);
 
         if (selected != null && "BOOKED".equalsIgnoreCase(selected.getStatus())) {
-            Main.bookingService.cancel(selected, currentUsername + "@gmail.com");
+            String realEmail = Main.authService.getUserEmail(currentUsername);
+            Main.bookingService.cancel(selected, realEmail);
             refreshTableData();
             JOptionPane.showMessageDialog(this, "Cancelled!");
         }
+    }
+
+    private void refreshTableData() {
+        Main.repo.loadFromFile();
+        tableModel.setRowCount(0);
+        String filter = (String) durationFilter.getSelectedItem();
+        for (Appointment app : Main.repo.getAvailableAppointments()) {
+            boolean durMatch = "All".equals(filter) || String.valueOf(app.getDurationMinutes()).equals(filter);
+            if (durMatch) {
+                if (showOnlyMyBookings) {
+                    // التحقق بناءً على اسم المستخدم أو إيميله لضمان ظهور الحجوزات
+                    if (currentUsername.equalsIgnoreCase(app.getBookedBy()) || Main.authService.getUserEmail(currentUsername).equalsIgnoreCase(app.getBookedBy())) {
+                        addRow(app);
+                    }
+                } else {
+                    addRow(app);
+                }
+            }
+        }
+    }
+
+    private void addRow(Appointment app) {
+        tableModel.addRow(new Object[]{app.getId(), app.getDateTime().format(formatter), app.getDurationMinutes(), app.getType(), app.getStatus(), app.getBookedBy()});
+    }
+
+    private void formatBtn(JButton b) {
+        b.setForeground(TURQUOISE_COLOR);
+        b.setFont(new Font("Segoe UI", Font.BOLD, 22));
+        b.setBorder(BorderFactory.createLineBorder(TURQUOISE_COLOR, 3));
+        b.setBackground(Color.WHITE);
+        b.setFocusPainted(false);
     }
 
     private JButton createMenuButton(String text) {

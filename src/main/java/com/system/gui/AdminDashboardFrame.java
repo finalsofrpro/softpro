@@ -10,18 +10,17 @@ import javax.swing.table.DefaultTableModel;
 import java.awt.*;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
-import java.util.logging.Level;
-import java.util.logging.Logger;
+
 /**
  * Advanced Admin Dashboard for managing system appointments.
  * Features automated notifications when appointments are cancelled by the admin.
- * * @author Raghad and Farah
+ * @author Raghad and Farah
  * @version 1.2
  */
 public class AdminDashboardFrame extends JFrame {
-    private static final Logger LOGGER = Logger.getLogger(AdminDashboardFrame.class.getName());
     private final Color TURQUOISE_COLOR = new Color(0, 188, 212);
     private transient AuthenticationService authService = Main.authService;
+    // رجعنا للتعريف الأصلي المستقر
     private AppointmentRepository appointmentRepo = Main.repo;
     private JPanel contentPanel;
     private String currentSubMode = "ADD";
@@ -54,13 +53,19 @@ public class AdminDashboardFrame extends JFrame {
         btnAddAdmin.addActionListener(e -> showAddAdminDialog());
         btnLogout.addActionListener(e -> { new ModernLoginFrame().setVisible(true); dispose(); });
 
-        sidePanel.add(btnManageApp); sidePanel.add(btnViewSlots); sidePanel.add(btnManageUsers);
-        sidePanel.add(btnAddAdmin); sidePanel.add(new JLabel("")); sidePanel.add(btnLogout);
+        sidePanel.add(btnManageApp);
+        sidePanel.add(btnViewSlots);
+        sidePanel.add(btnManageUsers);
+        sidePanel.add(btnAddAdmin);
+        sidePanel.add(new JLabel(""));
+        sidePanel.add(btnLogout);
+
         add(sidePanel, BorderLayout.WEST);
 
         contentPanel = new JPanel(new BorderLayout());
         contentPanel.setBackground(Color.WHITE);
         add(contentPanel, BorderLayout.CENTER);
+
         showWelcome(adminName);
     }
 
@@ -75,6 +80,7 @@ public class AdminDashboardFrame extends JFrame {
 
     private void showManageAppointments() {
         contentPanel.removeAll();
+
         JPanel togglePanel = new JPanel(new GridLayout(1, 3, 20, 0));
         togglePanel.setBackground(Color.WHITE);
         togglePanel.setBorder(BorderFactory.createEmptyBorder(20, 150, 20, 150));
@@ -83,7 +89,9 @@ public class AdminDashboardFrame extends JFrame {
         JButton editMode = new JButton("Edit Mode");
         JButton deleteMode = new JButton("Delete Mode");
 
-        applyStyledButton(addMode, 14, 2); applyStyledButton(editMode, 14, 2); applyStyledButton(deleteMode, 14, 2);
+        applyStyledButton(addMode, 14, 2);
+        applyStyledButton(editMode, 14, 2);
+        applyStyledButton(deleteMode, 14, 2);
 
         addMode.addActionListener(e -> { currentSubMode = "ADD"; showManageAppointments(); });
         editMode.addActionListener(e -> { currentSubMode = "EDIT"; showManageAppointments(); });
@@ -110,17 +118,18 @@ public class AdminDashboardFrame extends JFrame {
             inputFields.add(new JLabel("Duration (Min):")); inputFields.add(durF);
             inputFields.add(new JLabel("Type:")); inputFields.add(typeBox);
         } else if (currentSubMode.equals("EDIT")) {
-            inputFields.add(new JLabel("Target ID (Select from table):")); inputFields.add(idF);
+            inputFields.add(new JLabel("Target ID:")); inputFields.add(idF);
             inputFields.add(new JLabel("New Time:")); inputFields.add(dateF);
             inputFields.add(new JLabel("New Duration:")); inputFields.add(durF);
             inputFields.add(new JLabel("New Type:")); inputFields.add(typeBox);
         } else {
-            inputFields.add(new JLabel("ID to Delete (Select from table):")); inputFields.add(idF);
+            inputFields.add(new JLabel("ID to Delete:")); inputFields.add(idF);
         }
 
         JButton actionBtn = new JButton("Confirm " + currentSubMode);
         applyStyledButton(actionBtn, 20, 3);
-        inputFields.add(new JLabel("")); inputFields.add(actionBtn);
+        inputFields.add(new JLabel(""));
+        inputFields.add(actionBtn);
         actionBtn.addActionListener(e -> handleAppAction(idF.getText(), dateF.getText(), durF.getText(), typeBox.getSelectedItem().toString()));
 
         workArea.add(inputFields, BorderLayout.NORTH);
@@ -133,26 +142,16 @@ public class AdminDashboardFrame extends JFrame {
             model.addRow(new Object[]{a.getId(), a.getDateTime().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm")),
                     a.getDurationMinutes(), a.getType(), a.getStatus(), a.getBookedBy()});
         }
-
         JTable previewTable = new JTable(model);
 
-        // ✅ التعديل الجديد: تعبئة الحقول تلقائياً عند اختيار صف من الجدول
-        previewTable.getSelectionModel().addListSelectionListener(event -> {
-            if (!event.getValueIsAdjusting() && previewTable.getSelectedRow() != -1) {
+        // ربط الجدول بالحقول (النسخة اللي طلبتيها للتسهيل)
+        previewTable.getSelectionModel().addListSelectionListener(e -> {
+            if (!e.getValueIsAdjusting() && previewTable.getSelectedRow() != -1) {
                 int row = previewTable.getSelectedRow();
                 idF.setText(model.getValueAt(row, 0).toString());
                 dateF.setText(model.getValueAt(row, 1).toString());
                 durF.setText(model.getValueAt(row, 2).toString());
                 typeBox.setSelectedItem(model.getValueAt(row, 3).toString());
-
-                // منع تعديل الـ ID في مود التعديل لضمان استبدال الموعد الصحيح
-                if ("EDIT".equals(currentSubMode)) {
-                    idF.setEditable(false);
-                    idF.setBackground(new Color(245, 245, 245));
-                } else {
-                    idF.setEditable(true);
-                    idF.setBackground(Color.WHITE);
-                }
             }
         });
 
@@ -166,27 +165,19 @@ public class AdminDashboardFrame extends JFrame {
             int id = Integer.parseInt(idS);
             int duration = currentSubMode.equals("DELETE") ? 0 : Integer.parseInt(durS);
 
-            if (!currentSubMode.equals("DELETE") && "Urgent".equalsIgnoreCase(typeS) && duration > 15) {
-                JOptionPane.showMessageDialog(this, "Error: Urgent appointments cannot exceed 15 minutes!", "Validation Error", JOptionPane.ERROR_MESSAGE);
-                return;
-            }
-
             if (currentSubMode.equals("ADD")) {
                 LocalDateTime dt = LocalDateTime.parse(dateS, DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm"));
                 appointmentRepo.addAppointment(new Appointment(id, dt, duration, 1, typeS));
-                JOptionPane.showMessageDialog(this, "Added and Saved!");
-            } else {
+            } else if (currentSubMode.equals("DELETE")) {
                 appointmentRepo.deleteAppointment(id);
-                if (currentSubMode.equals("EDIT")) {
-                    LocalDateTime dt = LocalDateTime.parse(dateS, DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm"));
-                    appointmentRepo.addAppointment(new Appointment(id, dt, duration, 1, typeS));
-                    JOptionPane.showMessageDialog(this, "Updated and Saved!");
-                } else {
-                    JOptionPane.showMessageDialog(this, "Deleted!");
-                }
+            } else if (currentSubMode.equals("EDIT")) {
+                appointmentRepo.deleteAppointment(id);
+                LocalDateTime dt = LocalDateTime.parse(dateS, DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm"));
+                appointmentRepo.addAppointment(new Appointment(id, dt, duration, 1, typeS));
             }
+            appointmentRepo.saveToFile(); // أهم سطر عشان ما تروح الحجوزات
+            JOptionPane.showMessageDialog(this, "Success!");
         } catch (Exception ex) {
-            LOGGER.log(Level.WARNING, "Error handling appointment action", ex);
             JOptionPane.showMessageDialog(this, "Error: " + ex.getMessage());
         }
         showManageAppointments();
@@ -203,9 +194,7 @@ public class AdminDashboardFrame extends JFrame {
                 String[] p = line.split(",");
                 if (p.length >= 1) model.addRow(new Object[]{p[0], "CLIENT"});
             }
-        } catch (Exception e) {
-            LOGGER.log(Level.SEVERE, "Could not load users file", e);
-        }
+        } catch (Exception e) { }
         userPanel.add(new JScrollPane(new JTable(model)), BorderLayout.CENTER);
         contentPanel.add(userPanel, BorderLayout.CENTER);
         refresh();
