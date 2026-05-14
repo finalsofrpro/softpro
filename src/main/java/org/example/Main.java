@@ -9,44 +9,28 @@ import javax.swing.SwingUtilities;
 import javax.swing.UIManager;
 
 /**
- * The main entry point for the Appointment Scheduling System.
- * This class initializes all core components, including repositories and services,
- * and sets up the observer pattern for notifications.
- * * @author Raghad and Farah
- * @version 1.0
+ * Entry point for the Appointment System.
+ * Configured for Phase 2 Static Analysis and Persistence.
+ * @author Raghad and Farah
  */
 public class Main {
 
-    /** Global repository for appointment data management. */
-    public static final AppointmentRepository repo = new AppointmentRepository();
-
-    /** Global service for user authentication and account management. */
+    // استخدام الـ Repository مع تفعيل الملفات لضمان حفظ البيانات
+    public static final AppointmentRepository repo = new AppointmentRepository(true);
     public static AuthenticationService authService = new AuthenticationService();
-
-    /** * Global booking service initialized with a flexible strategy
-     * that accepts all appointment types for testing purposes.
-     */
     public static BookingService bookingService = new BookingService(repo, appointment -> true);
 
-    /**
-     * Main method that launches the application.
-     * @param args Command line arguments (not used).
-     */
     public static void main(String[] args) {
-        // 1. Load existing appointment records from storage
+        // تحميل المواعيد من الملف فور تشغيل البرنامج
         repo.loadFromFile();
 
-        // 2. CRITICAL: Register the EmailService as an observer to enable email notifications
+        // ربط الـ Observer لإرسال الإيميلات (مطلب أساسي في الفيز 2)
         bookingService.addObserver(new EmailService());
 
-        // 3. Set the system look and feel for the GUI
         try {
             UIManager.setLookAndFeel(UIManager.getSystemLookAndFeelClassName());
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
+        } catch (Exception e) { e.printStackTrace(); }
 
-        // 4. Start the application by displaying the login frame
         SwingUtilities.invokeLater(() -> {
             new ModernLoginFrame().setVisible(true);
         });

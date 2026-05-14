@@ -11,16 +11,13 @@ import java.awt.*;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 
-/**
- * Advanced Admin Dashboard for managing system appointments.
- * Features automated notifications when appointments are cancelled by the admin.
- * * @author Raghad and Farah
- * @version 1.2
- */
 public class AdminDashboardFrame extends JFrame {
     private final Color TURQUOISE_COLOR = new Color(0, 188, 212);
     private transient AuthenticationService authService = Main.authService;
-    private AppointmentRepository appointmentRepo = new AppointmentRepository();
+
+    // تم التعديل للارتباط بالمستودع العام في Main
+    private AppointmentRepository appointmentRepo = Main.repo;
+
     private JPanel contentPanel;
     private String currentSubMode = "ADD";
 
@@ -117,12 +114,12 @@ public class AdminDashboardFrame extends JFrame {
             inputFields.add(new JLabel("Duration (Min):")); inputFields.add(durF);
             inputFields.add(new JLabel("Type:")); inputFields.add(typeBox);
         } else if (currentSubMode.equals("EDIT")) {
-            inputFields.add(new JLabel("Target ID (Select from table):")); inputFields.add(idF);
+            inputFields.add(new JLabel("Target ID:")); inputFields.add(idF);
             inputFields.add(new JLabel("New Time:")); inputFields.add(dateF);
             inputFields.add(new JLabel("New Duration:")); inputFields.add(durF);
             inputFields.add(new JLabel("New Type:")); inputFields.add(typeBox);
         } else {
-            inputFields.add(new JLabel("ID to Delete (Select from table):")); inputFields.add(idF);
+            inputFields.add(new JLabel("ID to Delete:")); inputFields.add(idF);
         }
 
         JButton actionBtn = new JButton("Confirm " + currentSubMode);
@@ -142,17 +139,6 @@ public class AdminDashboardFrame extends JFrame {
                     a.getDurationMinutes(), a.getType(), a.getStatus(), a.getBookedBy()});
         }
         JTable previewTable = new JTable(model);
-        previewTable.getSelectionModel().addListSelectionListener(e -> {
-            if (!e.getValueIsAdjusting() && previewTable.getSelectedRow() != -1 && !currentSubMode.equals("ADD")) {
-                int row = previewTable.getSelectedRow();
-                idF.setText(model.getValueAt(row, 0).toString());
-                dateF.setText(model.getValueAt(row, 1).toString());
-                durF.setText(model.getValueAt(row, 2).toString());
-                typeBox.setSelectedItem(model.getValueAt(row, 3).toString());
-                if (currentSubMode.equals("EDIT")) idF.setEditable(false);
-            }
-        });
-
         workArea.add(new JScrollPane(previewTable), BorderLayout.CENTER);
         contentPanel.add(workArea, BorderLayout.CENTER);
         refresh();
@@ -166,34 +152,15 @@ public class AdminDashboardFrame extends JFrame {
             if (currentSubMode.equals("ADD")) {
                 LocalDateTime dt = LocalDateTime.parse(dateS, DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm"));
                 appointmentRepo.addAppointment(new Appointment(id, dt, duration, 1, typeS));
-                JOptionPane.showMessageDialog(this, "Added!");
+                JOptionPane.showMessageDialog(this, "Added and Saved!");
             } else {
-                Appointment target = appointmentRepo.getAvailableAppointments().stream()
-                        .filter(a -> a.getId() == id).findFirst().orElse(null);
-
-                if (target == null) {
-                    JOptionPane.showMessageDialog(this, "ID not found!");
-                    return;
-                }
-
-                if ("BOOKED".equals(target.getStatus())) {
-                    // --- رسالة الإيميل المحدثة ---
-                    String msg = "Hello,\n\n" +
-                            "We would like to inform you that your appointment (ID: " + id + ") " +
-                            "has been cancelled by the System Administrator.\n\n" +
-                            "You can now log in to the system and book a new available slot at your convenience.\n\n" +
-                            "Best regards,\nAdministration Team";
-
-                    new EmailService().sendEmail(target.getBookedBy(), msg);
-                }
-
                 appointmentRepo.deleteAppointment(id);
                 if (currentSubMode.equals("EDIT")) {
                     LocalDateTime dt = LocalDateTime.parse(dateS, DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm"));
                     appointmentRepo.addAppointment(new Appointment(id, dt, duration, 1, typeS));
-                    JOptionPane.showMessageDialog(this, "Updated!");
+                    JOptionPane.showMessageDialog(this, "Updated and Saved!");
                 } else {
-                    JOptionPane.showMessageDialog(this, "Deleted & User Notified!");
+                    JOptionPane.showMessageDialog(this, "Deleted!");
                 }
             }
         } catch (Exception ex) {
