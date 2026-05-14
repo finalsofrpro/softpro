@@ -161,25 +161,99 @@ public class AdminDashboardFrame extends JFrame {
     }
 
     private void handleAppAction(String idS, String dateS, String durS, String typeS) {
+
         try {
+
             int id = Integer.parseInt(idS);
             int duration = currentSubMode.equals("DELETE") ? 0 : Integer.parseInt(durS);
 
+            // نجيب الموعد القديم
+            Appointment oldAppointment = appointmentRepo
+                    .getAvailableAppointments()
+                    .stream()
+                    .filter(a -> a.getId() == id)
+                    .findFirst()
+                    .orElse(null);
+
             if (currentSubMode.equals("ADD")) {
-                LocalDateTime dt = LocalDateTime.parse(dateS, DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm"));
-                appointmentRepo.addAppointment(new Appointment(id, dt, duration, 1, typeS));
+
+                LocalDateTime dt = LocalDateTime.parse(
+                        dateS,
+                        DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm")
+                );
+
+                appointmentRepo.addAppointment(
+                        new Appointment(id, dt, duration, 1, typeS)
+                );
+
             } else if (currentSubMode.equals("DELETE")) {
+
+                if (oldAppointment != null
+                        && "BOOKED".equalsIgnoreCase(oldAppointment.getStatus())) {
+
+                    String email = oldAppointment.getBookedBy();
+
+                    // إرسال إيميل حذف
+                    new EmailService().sendEmail(
+                            email,
+                            "Appointment Cancelled",
+                            "Hello,\n\nYour appointment has been cancelled.\n"
+                                    + "Details:\n"
+                                    + "- Type: " + oldAppointment.getType() + "\n"
+                                    + "- Time: " + oldAppointment.getDateTime().toString().replace("T", " ")
+                    );
+                }
+
                 appointmentRepo.deleteAppointment(id);
+
             } else if (currentSubMode.equals("EDIT")) {
+
+                String email = "";
+
+                if (oldAppointment != null) {
+                    email = oldAppointment.getBookedBy();
+                }
+
                 appointmentRepo.deleteAppointment(id);
-                LocalDateTime dt = LocalDateTime.parse(dateS, DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm"));
-                appointmentRepo.addAppointment(new Appointment(id, dt, duration, 1, typeS));
+
+                LocalDateTime dt = LocalDateTime.parse(
+                        dateS,
+                        DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm")
+                );
+
+                Appointment updated = new Appointment(id, dt, duration, 1, typeS);
+
+                // إذا كان محجوز → نحافظ عليه + نبعت إيميل
+                if (oldAppointment != null
+                        && "BOOKED".equalsIgnoreCase(oldAppointment.getStatus())) {
+
+                    updated.setStatus("BOOKED");
+                    updated.setBookedBy(email);
+
+                    // إرسال إيميل تعديل
+                    new EmailService().sendEmail(
+                            email,
+                            "Appointment Updated",
+                            "Hello,\n\nYour appointment has been updated.\n"
+                                    + "New Details:\n"
+                                    + "- Type: " + typeS + "\n"
+                                    + "- Time: " + dt.toString().replace("T", " ") + "\n"
+                                    + "- Duration: " + duration + " minutes."
+                    );
+                }
+
+                appointmentRepo.addAppointment(updated);
             }
-            appointmentRepo.saveToFile(); // أهم سطر عشان ما تروح الحجوزات
+
+            appointmentRepo.saveToFile();
+
             JOptionPane.showMessageDialog(this, "Success!");
+
         } catch (Exception ex) {
+
             JOptionPane.showMessageDialog(this, "Error: " + ex.getMessage());
         }
+
         showManageAppointments();
     }
 

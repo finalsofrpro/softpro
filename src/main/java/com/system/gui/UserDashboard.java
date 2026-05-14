@@ -104,24 +104,69 @@ public class UserDashboard extends JFrame {
         if (selected != null && "AVAILABLE".equalsIgnoreCase(selected.getStatus())) {
             String realEmail = Main.authService.getUserEmail(currentUsername);
             if (Main.bookingService.book(selected, realEmail)) {
-                JOptionPane.showMessageDialog(this, "Booking Successful! Notification sent to: " + realEmail);
+
+                JOptionPane.showMessageDialog(
+                        this,
+                        "Booking Successful! Notification sent to: " + realEmail
+                );
+
                 refreshTableData();
+
             } else {
-                JOptionPane.showMessageDialog(this, "Booking Failed.");
+
+                if ("BOOKED".equalsIgnoreCase(selected.getStatus())) {
+
+                    JOptionPane.showMessageDialog(
+                            this,
+                            "❌ This appointment is already booked!"
+                    );
+
+                } else {
+
+                    JOptionPane.showMessageDialog(
+                            this,
+                            "❌ Booking Failed."
+                    );
+                }
             }
         }
     }
 
     private void handleCancel() {
-        int row = appointmentTable.getSelectedRow();
-        if (row == -1) return;
-        int id = (int) tableModel.getValueAt(row, 0);
-        Appointment selected = Main.repo.getAvailableAppointments().stream().filter(a -> a.getId() == id).findFirst().orElse(null);
 
-        if (selected != null && "BOOKED".equalsIgnoreCase(selected.getStatus())) {
-            String realEmail = Main.authService.getUserEmail(currentUsername);
-            Main.bookingService.cancel(selected, realEmail);
+        int row = appointmentTable.getSelectedRow();
+
+        if (row == -1) return;
+
+        int id = (int) tableModel.getValueAt(row, 0);
+
+        Appointment selected = Main.repo
+                .getAvailableAppointments()
+                .stream()
+                .filter(a -> a.getId() == id)
+                .findFirst()
+                .orElse(null);
+
+        if (selected != null
+                && "BOOKED".equalsIgnoreCase(selected.getStatus())) {
+
+            String currentUserEmail =
+                    Main.authService.getUserEmail(currentUsername);
+
+            // 🔥 أهم شرط
+            if (!currentUserEmail.equalsIgnoreCase(selected.getBookedBy())) {
+
+                JOptionPane.showMessageDialog(
+                        this,
+                        "You can only cancel your own bookings!"
+                );
+                return;
+            }
+
+            Main.bookingService.cancel(selected, currentUserEmail);
+
             refreshTableData();
+
             JOptionPane.showMessageDialog(this, "Cancelled!");
         }
     }
@@ -134,8 +179,14 @@ public class UserDashboard extends JFrame {
             boolean durMatch = "All".equals(filter) || String.valueOf(app.getDurationMinutes()).equals(filter);
             if (durMatch) {
                 if (showOnlyMyBookings) {
-                    // التحقق بناءً على اسم المستخدم أو إيميله لضمان ظهور الحجوزات
-                    if (currentUsername.equalsIgnoreCase(app.getBookedBy()) || Main.authService.getUserEmail(currentUsername).equalsIgnoreCase(app.getBookedBy())) {
+
+                    String currentUserEmail =
+                            Main.authService.getUserEmail(currentUsername);
+                    if ("BOOKED".equalsIgnoreCase(app.getStatus())
+                            &&
+                            currentUserEmail != null
+                            &&
+                            currentUserEmail.equalsIgnoreCase(app.getBookedBy())) {
                         addRow(app);
                     }
                 } else {

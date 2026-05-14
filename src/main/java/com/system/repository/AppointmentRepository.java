@@ -71,6 +71,10 @@ public class AppointmentRepository {
         }
     }
 
+    public List<Appointment> getAllAppointments() {
+        return appointments;
+    }
+
     public void loadFromFile() {
         appointments.clear();
         File file = new File(fileName);
