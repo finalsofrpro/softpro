@@ -161,9 +161,7 @@ public class AdminDashboardFrame extends JFrame {
     }
 
     private void handleAppAction(String idS, String dateS, String durS, String typeS) {
-
         try {
-
             int id = Integer.parseInt(idS);
             int duration = currentSubMode.equals("DELETE") ? 0 : Integer.parseInt(durS);
 
@@ -175,32 +173,44 @@ public class AdminDashboardFrame extends JFrame {
                     .findFirst()
                     .orElse(null);
 
+            // ✅ validation للمدة حسب النوع
+            if (currentSubMode.equals("ADD") || currentSubMode.equals("EDIT")) {
+
+                if (typeS.equalsIgnoreCase("Urgent") && duration > 15) {
+                    JOptionPane.showMessageDialog(this, "❌ Urgent max is 15 minutes");
+                    return;
+                }
+
+                if (typeS.equalsIgnoreCase("General") && duration > 30) {
+                    JOptionPane.showMessageDialog(this, "❌ General max is 30 minutes");
+                    return;
+                }
+
+                if (typeS.equalsIgnoreCase("Virtual") && duration > 60) {
+                    JOptionPane.showMessageDialog(this, "❌ Virtual max is 60 minutes");
+                    return;
+                }
+            }
+
             if (currentSubMode.equals("ADD")) {
 
-                LocalDateTime dt = LocalDateTime.parse(
-                        dateS,
-                        DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm")
-                );
+                LocalDateTime dt = LocalDateTime.parse(dateS,
+                        DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm"));
 
-                appointmentRepo.addAppointment(
-                        new Appointment(id, dt, duration, 1, typeS)
-                );
+                appointmentRepo.addAppointment(new Appointment(id, dt, duration, 1, typeS));
 
             } else if (currentSubMode.equals("DELETE")) {
 
-                if (oldAppointment != null
-                        && "BOOKED".equalsIgnoreCase(oldAppointment.getStatus())) {
-
+                if (oldAppointment != null && "BOOKED".equalsIgnoreCase(oldAppointment.getStatus())) {
                     String email = oldAppointment.getBookedBy();
 
-                    // إرسال إيميل حذف
                     new EmailService().sendEmail(
                             email,
                             "Appointment Cancelled",
-                            "Hello,\n\nYour appointment has been cancelled.\n"
-                                    + "Details:\n"
-                                    + "- Type: " + oldAppointment.getType() + "\n"
-                                    + "- Time: " + oldAppointment.getDateTime().toString().replace("T", " ")
+                            "Hello,\n\nYour appointment has been cancelled.\n" +
+                                    "Details:\n" +
+                                    "- Type: " + oldAppointment.getType() + "\n" +
+                                    "- Time: " + oldAppointment.getDateTime().toString().replace("T", " ")
                     );
                 }
 
@@ -209,36 +219,33 @@ public class AdminDashboardFrame extends JFrame {
             } else if (currentSubMode.equals("EDIT")) {
 
                 String email = "";
+                boolean wasBooked = false;
 
-                if (oldAppointment != null) {
+                if (oldAppointment != null && "BOOKED".equalsIgnoreCase(oldAppointment.getStatus())) {
                     email = oldAppointment.getBookedBy();
+                    wasBooked = true;
                 }
 
                 appointmentRepo.deleteAppointment(id);
 
-                LocalDateTime dt = LocalDateTime.parse(
-                        dateS,
-                        DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm")
-                );
+                LocalDateTime dt = LocalDateTime.parse(dateS,
+                        DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm"));
 
                 Appointment updated = new Appointment(id, dt, duration, 1, typeS);
 
-                // إذا كان محجوز → نحافظ عليه + نبعت إيميل
-                if (oldAppointment != null
-                        && "BOOKED".equalsIgnoreCase(oldAppointment.getStatus())) {
-
+                // إذا كان محجوز نحافظ عليه
+                if (wasBooked) {
                     updated.setStatus("BOOKED");
                     updated.setBookedBy(email);
 
-                    // إرسال إيميل تعديل
                     new EmailService().sendEmail(
                             email,
                             "Appointment Updated",
-                            "Hello,\n\nYour appointment has been updated.\n"
-                                    + "New Details:\n"
-                                    + "- Type: " + typeS + "\n"
-                                    + "- Time: " + dt.toString().replace("T", " ") + "\n"
-                                    + "- Duration: " + duration + " minutes."
+                            "Hello,\n\nYour appointment has been updated.\n" +
+                                    "New Details:\n" +
+                                    "- Type: " + typeS + "\n" +
+                                    "- Time: " + dt.toString().replace("T", " ") + "\n" +
+                                    "- Duration: " + duration + " minutes."
                     );
                 }
 
@@ -246,11 +253,9 @@ public class AdminDashboardFrame extends JFrame {
             }
 
             appointmentRepo.saveToFile();
-
             JOptionPane.showMessageDialog(this, "Success!");
 
         } catch (Exception ex) {
-
             JOptionPane.showMessageDialog(this, "Error: " + ex.getMessage());
         }
 
