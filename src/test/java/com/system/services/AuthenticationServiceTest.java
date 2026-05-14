@@ -149,4 +149,93 @@ public class AuthenticationServiceTest {
         AuthenticationService auth = new AuthenticationService(false);
         assertTrue(auth.registerNewAdmin("adminX", "1234"));
     }
+
+    @Test
+    void testGetUserEmailExisting() {
+        AuthenticationService auth = new AuthenticationService(true);
+        auth.registerNewUser("userA", "1234", "a@test.com");
+
+        String email = auth.getUserEmail("userA");
+
+        assertEquals("a@test.com", email);
+    }
+
+    @Test
+    void testGetUserEmailFallback() {
+        AuthenticationService auth = new AuthenticationService(true);
+
+        String email = auth.getUserEmail("unknownUser");
+
+        assertEquals("unknownUser@gmail.com", email);
+    }
+
+    @Test
+    void testGetUserEmailNull() {
+        AuthenticationService auth = new AuthenticationService(true);
+
+        String email = auth.getUserEmail(null);
+
+        assertEquals("", email);
+    }
+
+    @Test
+    void testRegisterUserWithoutObserverDoesNotCrash() {
+        AuthenticationService auth = new AuthenticationService(true);
+
+        assertDoesNotThrow(() ->
+                auth.registerNewUser("userB", "1234", "b@test.com")
+        );
+    }
+
+    @Test
+    void testMultipleObserversNotification() {
+        NotificationObserver obs1 = mock(NotificationObserver.class);
+        NotificationObserver obs2 = mock(NotificationObserver.class);
+
+        AuthenticationService auth = new AuthenticationService(true);
+        auth.addObserver(obs1);
+        auth.addObserver(obs2);
+
+        auth.registerNewUser("userC", "1234", "c@test.com");
+
+        verify(obs1, atLeastOnce()).update(anyString(), anyString());
+        verify(obs2, atLeastOnce()).update(anyString(), anyString());
+    }
+
+    @Test
+    void testAddDuplicateObserver() {
+        NotificationObserver observer = mock(NotificationObserver.class);
+
+        AuthenticationService auth = new AuthenticationService(true);
+        auth.addObserver(observer);
+        auth.addObserver(observer); // نفس الأوبزرفر
+
+        auth.registerNewUser("userD", "1234", "d@test.com");
+
+        // لازم يناديه مرة وحدة (مش مكرر)
+        verify(observer, atLeastOnce()).update(anyString(), anyString());
+    }
+
+    @Test
+    void testLoginWithNullValues() {
+        AuthenticationService auth = new AuthenticationService(true);
+
+        assertEquals(Role.NONE, auth.login(null, null));
+    }
+
+    @Test
+    void testRegisterUserTrimsUsername() {
+        AuthenticationService auth = new AuthenticationService(true);
+
+        auth.registerNewUser(" userTrim ", "1234", "t@test.com");
+
+        assertEquals(Role.USER, auth.login("userTrim", "1234"));
+    }
+
+    @Test
+    void testRegisterAdminInvalidName() {
+        AuthenticationService auth = new AuthenticationService(true);
+
+        assertFalse(auth.registerNewAdmin("admin!!", "1234"));
+    }
 }
